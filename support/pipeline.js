@@ -12,7 +12,7 @@ async function startPipeline(unpublishedResource){
 
   await insertZitting(triples, unpublishedResource);
   await insertAgendaPunten(triples, unpublishedResource);
-  await insertBav(triples, unpublishedResource);
+  await insertBvap(triples, unpublishedResource);
   await insertBesluiten(triples, unpublishedResource);
   await insertNotulen(triples, unpublishedResource);
 };
@@ -27,11 +27,11 @@ async function insertBesluiten(triples, unpublishedResource){
   await persistExtractedData(trs, unpublishedResource);
 }
 
-async function insertBav(triples, unpublishedResource){
+async function insertBvap(triples, unpublishedResource){
   if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
-  let trs = getBav(triples);
+  let trs = getBvap(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
   linkToPublishedResource(trs, unpublishedResource.resource);
   await persistExtractedData(trs, unpublishedResource);
@@ -97,7 +97,7 @@ function getBesluiten(triples, unpublishedResource){
 
 }
 
-function getBav(triples){
+function getBvap(triples){
   let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt');
 
   //We are conservative in what to persist; we respect applicatieprofiel
