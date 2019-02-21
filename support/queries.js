@@ -125,9 +125,8 @@ async function getUuidForResource(escapedUri, graph){
        }
   `;
 
-  let exUuid = parseResult(await query(queryStr)).uuid;
-
-  if(exUuid) return exUuid;
+  let exUuid = parseResult(await query(queryStr))[0];
+  if(exUuid) return exUuid.uuid;
 
   exUuid = uuid();
   let insertStr = `
