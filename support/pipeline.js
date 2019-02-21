@@ -4,6 +4,8 @@ import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanne
 import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
+//TODO: notulen.
+//TODO: Link all extracted stuff to published resource
 async function startPipeline(unpublishedResource){
   let doc = new rdfaDomDocument(unpublishedResource.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
@@ -22,6 +24,7 @@ async function insertBesluiten(triples, unpublishedResource){
   }
   let trs = getBesluiten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
+  linkToPublishedResource(trs, unpublishedResource.resource);
   await persistExtractedData(trs, unpublishedResource);
 }
 
@@ -31,12 +34,14 @@ async function insertBav(triples, unpublishedResource){
   }
   let trs = getBav(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
+  linkToPublishedResource(trs, unpublishedResource.resource);
   await persistExtractedData(trs, unpublishedResource);
 };
 
 async function insertZitting(triples, unpublishedResource){
-  let zittingTriples = getZittingResource(triples);
-  await persistExtractedData(zittingTriples, unpublishedResource);
+  let trs = getZittingResource(triples);
+  linkToPublishedResource(trs, unpublishedResource.resource);
+  await persistExtractedData(trs, unpublishedResource);
 };
 
 async function insertAgendaPunten(triples, unpublishedResource){
@@ -45,6 +50,7 @@ async function insertAgendaPunten(triples, unpublishedResource){
   }
   let trs = getAgendaPunten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
+  linkToPublishedResource(trs, unpublishedResource.resource);
   await persistExtractedData(trs, unpublishedResource);
 };
 
@@ -161,6 +167,15 @@ function linkToZitting(preparedTriples, origTriples, predicate){
   resources.forEach(t => {
     preparedTriples.push({subject: sparqlEscapeUri(zitting.subject), predicate: sparqlEscapeUri(predicate), object: t.subject});
   });
+  return preparedTriples;
+}
+
+function linkToPublishedResource(preparedTriples, resourceUri){
+  let predicate = sparqlEscapeUri('http://www.w3.org/ns/prov#wasDerivedFrom');
+  let resources = preparedTriples.filter(t => t.predicate == 'a'); //extract the types
+    resources.forEach(t => {
+      preparedTriples.push({subject: t.subject, predicate, object: sparqlEscapeUri(resourceUri)});
+    });
   return preparedTriples;
 }
 
