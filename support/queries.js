@@ -6,10 +6,11 @@ const PENDING_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-p
 const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed";
 const SUCCESS_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success";
 
-async function getUnprocessedPublishedResources(pendingTimeout){
 const IS_PUBLISHED_AGENDA = "http://mu.semte.ch/vocabularies/ext/publishesAgenda";
 const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst";
 const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
+
+async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10){
   let queryStr = `
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
@@ -33,7 +34,7 @@ const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotul
 
            ||
 
-           (?status IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < 3)
+           (?status IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < ${sparqlEscapeInt(maxAttempts)})
 
            ||
 
