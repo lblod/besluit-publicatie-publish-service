@@ -20,7 +20,7 @@ new CronJob(CRON_FREQUENCY, async function() {
 async function startPublishing(){
   let unprocessedResources = await getUnprocessedPublishedResources(PENDING_TIMEOUT);
 
-  console.log('Found ${unprocessedResources.length} to process');
+  console.log(`Found ${unprocessedResources.length} to process`);
 
   //lock resources (yes yes should be batch operation)
   for(const item of unprocessedResources){
