@@ -5,7 +5,7 @@ import { CronJob } from 'cron';
 
 const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
-//TODO: chron jobs, further testing, notulen linken
+//TODO: further testing, notulen linken
 
 new CronJob(CRON_FREQUENCY, async function() {
   console.log(`Service triggered by cron job at ${new Date().toISOString()}`);
@@ -20,7 +20,7 @@ new CronJob(CRON_FREQUENCY, async function() {
 async function startPublishing(){
   let unprocessedResources = await getUnprocessedPublishedResources(PENDING_TIMEOUT);
 
-  console.log('Found ${unprocessedResources.length} to proces');
+  console.log('Found ${unprocessedResources.length} to process');
 
   //lock resources (yes yes should be batch operation)
   for(const item of unprocessedResources){
@@ -30,7 +30,7 @@ async function startPublishing(){
   }
 
   for (const item of unprocessedResources) {
-    console.log(`-- Start processing: ${item.resource}`);
+    console.log(`Start processing: ${item.resource}`);
 
     try {
       await startPipeline(item);
@@ -38,7 +38,7 @@ async function startPublishing(){
     }
 
     catch(e){
-      console.log(`--Error processing: ${item.resource}`);
+      console.log(`Error processing: ${item.resource}`);
       console.log(e);
       await updateStatus(item, FAILED_STATUS, item.numberOfRetries);
     }
