@@ -7,6 +7,9 @@ const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-pu
 const SUCCESS_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success";
 
 async function getUnprocessedPublishedResources(pendingTimeout){
+const IS_PUBLISHED_AGENDA = "http://mu.semte.ch/vocabularies/ext/publishesAgenda";
+const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst";
+const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
   let queryStr = `
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
