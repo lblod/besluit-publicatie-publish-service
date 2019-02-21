@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "es2017",
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+    "checkJs": true,
+    "lib": [ "dom", "es2017" ]
+  },
+  "exclude": [
+    "tmp",
+    "public"
+  ],
+  "include": [
+    "*.js",
+    "**/**.js",
+    "node_modules/**/*.js",
+    "*.ts",
+    "**/*.ts",
+    "node_modules/**/*.ts"
+  ]
+}
