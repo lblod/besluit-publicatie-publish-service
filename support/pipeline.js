@@ -5,56 +5,56 @@ import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
 //TODO: notulen.
-async function startPipeline(unpublishedResource){
-  let doc = new rdfaDomDocument(unpublishedResource.rdfaSnippet);
+async function startPipeline(resourceToPublish){
+  let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
   triples = preProcess(triples);
 
-  await insertZitting(triples, unpublishedResource);
-  await insertAgendaPunten(triples, unpublishedResource);
-  await insertBvap(triples, unpublishedResource);
-  await insertBesluiten(triples, unpublishedResource);
-  await insertNotulen(triples, unpublishedResource);
+  await insertZitting(triples, resourceToPublish);
+  await insertAgendaPunten(triples, resourceToPublish);
+  await insertBvap(triples, resourceToPublish);
+  await insertBesluiten(triples, resourceToPublish);
+  await insertNotulen(triples, resourceToPublish);
 };
 
-async function insertBesluiten(triples, unpublishedResource){
-  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_BESLUITENLIJST))){
+async function insertBesluiten(triples, resourceToPublish){
+  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
   let trs = getBesluiten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
-  linkToPublishedResource(trs, unpublishedResource.resource);
-  await persistExtractedData(trs, unpublishedResource);
+  linkToPublishedResource(trs, resourceToPublish.resource);
+  await persistExtractedData(trs, resourceToPublish);
 }
 
-async function insertBvap(triples, unpublishedResource){
-  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_BESLUITENLIJST))){
+async function insertBvap(triples, resourceToPublish){
+  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
   let trs = getBvap(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
-  linkToPublishedResource(trs, unpublishedResource.resource);
-  await persistExtractedData(trs, unpublishedResource);
+  linkToPublishedResource(trs, resourceToPublish.resource);
+  await persistExtractedData(trs, resourceToPublish);
 };
 
-async function insertZitting(triples, unpublishedResource){
+async function insertZitting(triples, resourceToPublish){
   let trs = getZittingResource(triples);
-  linkToPublishedResource(trs, unpublishedResource.resource);
-  await persistExtractedData(trs, unpublishedResource);
+  linkToPublishedResource(trs, resourceToPublish.resource);
+  await persistExtractedData(trs, resourceToPublish);
 };
 
-async function insertAgendaPunten(triples, unpublishedResource){
-  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_AGENDA))){
+async function insertAgendaPunten(triples, resourceToPublish){
+  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_AGENDA))){
     return;
   }
   let trs = getAgendaPunten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
-  linkToPublishedResource(trs, unpublishedResource.resource);
-  await persistExtractedData(trs, unpublishedResource);
+  linkToPublishedResource(trs, resourceToPublish.resource);
+  await persistExtractedData(trs, resourceToPublish);
 };
 
-async function insertNotulen(triples, unpublishedResource){
-  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_NOTULEN))){
+async function insertNotulen(triples, resourceToPublish){
+  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_NOTULEN))){
     return;
   }
   let subject = sparqlEscapeUri(`http://data.lblod.info/vocabularies/lblod/notulen/${uuid()}`);
@@ -63,13 +63,13 @@ async function insertNotulen(triples, unpublishedResource){
   trs.push({subject,
             predicate:
             sparqlEscapeUri('http://data.lblod.info/vocabularies/lblod/notulen/inhoud'),
-            object: sparqlEscapeString(unpublishedResource.rdfaSnippet)});
+            object: sparqlEscapeString(resourceToPublish.rdfaSnippet)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
-  linkToPublishedResource(trs, unpublishedResource.resource);
-  await persistExtractedData(trs, unpublishedResource);
+  linkToPublishedResource(trs, resourceToPublish.resource);
+  await persistExtractedData(trs, resourceToPublish);
 }
 
-function getBesluiten(triples, unpublishedResource){
+function getBesluiten(triples, resourceToPublish){
   let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
 
   //We are conservative in what to persist; we respect applicatieprofiel
