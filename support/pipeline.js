@@ -2,10 +2,9 @@ import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-he
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
 import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
-import {sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
+import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
 //TODO: notulen.
-//TODO: Link all extracted stuff to published resource
 async function startPipeline(unpublishedResource){
   let doc = new rdfaDomDocument(unpublishedResource.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
@@ -15,7 +14,7 @@ async function startPipeline(unpublishedResource){
   await insertAgendaPunten(triples, unpublishedResource);
   await insertBav(triples, unpublishedResource);
   await insertBesluiten(triples, unpublishedResource);
-
+  await insertNotulen(triples, unpublishedResource);
 };
 
 async function insertBesluiten(triples, unpublishedResource){
@@ -54,6 +53,21 @@ async function insertAgendaPunten(triples, unpublishedResource){
   await persistExtractedData(trs, unpublishedResource);
 };
 
+async function insertNotulen(triples, unpublishedResource){
+  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_NOTULEN))){
+    return;
+  }
+  let subject = sparqlEscapeUri(`http://data.lblod.info/vocabularies/lblod/notulen/${uuid()}`);
+  let trs = [];
+  trs.push({subject, predicate: "a", object: sparqlEscapeUri(`http://xmlns.com/foaf/0.1/Document`)});
+  trs.push({subject,
+            predicate:
+            sparqlEscapeUri('http://data.lblod.info/vocabularies/lblod/notulen/inhoud'),
+            object: sparqlEscapeString(unpublishedResource.rdfaSnippet)});
+  linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
+  linkToPublishedResource(trs, unpublishedResource.resource);
+  await persistExtractedData(trs, unpublishedResource);
+}
 
 function getBesluiten(triples, unpublishedResource){
   let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
