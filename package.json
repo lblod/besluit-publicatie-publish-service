@@ -4,6 +4,7 @@
   "description": "mu-semtech service to extract triples from PublishedResources and map to Publicatie Besluit",
   "main": "app.js",
   "dependencies": {
+    "cron": "^1.3.0",
     "graph-rdfa-processor": "^1.3.0",
     "jsdom": "^11.6.2",
     "@lblod/marawa": "0.0.8"
