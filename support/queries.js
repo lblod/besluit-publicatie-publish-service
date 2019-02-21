@@ -46,9 +46,19 @@ async function getUnprocessedPublishedResources(pendingTimeout){
   return results.filter(filterPendingTimeout(pendingTimeout));
 }
 
+async function belongsToType(resource, type){
+  let queryStr = `
+  SELECT DISTINCT ?doc {
+    GRAPH ${sparqlEscapeUri(resource.graph)}{
+      ${sparqlEscapeUri(resource.resource)} ${sparqlEscapeUri(type)} ?doc.
+    }
+  }`;
+  let res =  await query(queryStr);
+  res = parseResult(res);
+  return res.length > 0;
+}
+
 async function updateStatus(resource, status, attempts = 1){
-
-
   let queryStr = `
      DELETE {
         GRAPH ${sparqlEscapeUri(resource.graph)} {
@@ -165,5 +175,14 @@ const filterPendingTimeout = function( timeout ) {
   };
 };
 
-
-export { getUnprocessedPublishedResources, persistExtractedData, updateStatus, PENDING_STATUS, FAILED_STATUS, SUCCESS_STATUS }
+export { getUnprocessedPublishedResources,
+         persistExtractedData,
+         updateStatus,
+         belongsToType,
+         PENDING_STATUS,
+         FAILED_STATUS,
+         SUCCESS_STATUS,
+         IS_PUBLISHED_AGENDA,
+         IS_PUBLISHED_BESLUITENLIJST,
+         IS_PUBLISHED_NOTULEN
+       }
