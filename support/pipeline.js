@@ -1,7 +1,7 @@
 import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
-import { persistExtractedData } from './queries';
+import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
 async function startPipeline(unpublishedResource){
@@ -17,12 +17,20 @@ async function startPipeline(unpublishedResource){
 };
 
 async function insertBesluiten(triples, unpublishedResource){
+  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_BESLUITENLIJST))){
+    return;
+  }
   let trs = getBesluiten(triples);
+  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
   await persistExtractedData(trs, unpublishedResource);
 }
 
 async function insertBav(triples, unpublishedResource){
+  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_BESLUITENLIJST))){
+    return;
+  }
   let trs = getBav(triples);
+  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
   await persistExtractedData(trs, unpublishedResource);
 };
 
@@ -32,8 +40,12 @@ async function insertZitting(triples, unpublishedResource){
 };
 
 async function insertAgendaPunten(triples, unpublishedResource){
-  let apT = getAgendaPunten(triples);
-  await persistExtractedData(apT, unpublishedResource);
+  if(!(await belongsToType(unpublishedResource, IS_PUBLISHED_AGENDA))){
+    return;
+  }
+  let trs = getAgendaPunten(triples);
+  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
+  await persistExtractedData(trs, unpublishedResource);
 };
 
 
@@ -59,7 +71,7 @@ function getBesluiten(triples, unpublishedResource){
 
   return tois.map(t => {
     let p =  poi.find(p => p.predicate == t.predicate);
-    let escapedPredicate = 'a' == p.predicate?'a':sparqlEscapeUri(t.predicate);
+    let escapedPredicate = 'a' == p.predicate ? 'a': sparqlEscapeUri(t.predicate);
     return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
   });
 
@@ -140,10 +152,18 @@ function getZittingResource(triples){
   });
 };
 
-
 /*************************************************************
  * HELPERS
  *************************************************************/
+function linkToZitting(preparedTriples, origTriples, predicate){
+  let zitting = origTriples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let resources = preparedTriples.filter(t => t.predicate == 'a');
+  resources.forEach(t => {
+    preparedTriples.push({subject: sparqlEscapeUri(zitting.subject), predicate: sparqlEscapeUri(predicate), object: t.subject});
+  });
+  return preparedTriples;
+}
+
 function preProcess(triples){
   //remap triples (for backwards compatibilty, will be deleted one day)
   let remapP = {'http://data.vlaanderen.be/ns/besluit#heeftAgendapunt': 'http://data.vlaanderen.be/ns/besluit#behandelt'};
