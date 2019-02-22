@@ -24,7 +24,7 @@ async function insertBesluiten(triples, resourceToPublish){
   let trs = getBesluiten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
   linkToPublishedResource(trs, resourceToPublish.resource);
-  await persistExtractedData(trs, resourceToPublish);
+  await persistExtractedData(trs);
 }
 
 async function insertBvap(triples, resourceToPublish){
@@ -34,13 +34,13 @@ async function insertBvap(triples, resourceToPublish){
   let trs = getBvap(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
   linkToPublishedResource(trs, resourceToPublish.resource);
-  await persistExtractedData(trs, resourceToPublish);
+  await persistExtractedData(trs);
 };
 
 async function insertZitting(triples, resourceToPublish){
   let trs = getZittingResource(triples);
   linkToPublishedResource(trs, resourceToPublish.resource);
-  await persistExtractedData(trs, resourceToPublish);
+  await persistExtractedData(trs);
 };
 
 async function insertAgendaPunten(triples, resourceToPublish){
@@ -50,7 +50,7 @@ async function insertAgendaPunten(triples, resourceToPublish){
   let trs = getAgendaPunten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
   linkToPublishedResource(trs, resourceToPublish.resource);
-  await persistExtractedData(trs, resourceToPublish);
+  await persistExtractedData(trs);
 };
 
 async function insertNotulen(triples, resourceToPublish){
@@ -66,7 +66,7 @@ async function insertNotulen(triples, resourceToPublish){
             object: sparqlEscapeString(resourceToPublish.rdfaSnippet)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
-  await persistExtractedData(trs, resourceToPublish);
+  await persistExtractedData(trs);
 }
 
 function getBesluiten(triples, resourceToPublish){

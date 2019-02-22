@@ -90,7 +90,7 @@ async function updateStatus(resource, status, attempts = 1){
   await query(queryStr);
 };
 
-async function persistExtractedData(triples, resourceData){
+async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/public"){
   //we assume triples are expanded
   if(triples.length == 0){
     return;
@@ -99,13 +99,13 @@ async function persistExtractedData(triples, resourceData){
   let resources = triples.filter(isAResource);
 
   for(const r of resources){
-    await getUuidForResource(r.subject, resourceData.graph);
+    await getUuidForResource(r.subject, graph);
   }
 
   let triplesStr = triples.map(t => `${t.subject} ${t.predicate} ${t.object}.`).join('\n');
   let insertStr = `
     INSERT DATA{
-      GRAPH ${sparqlEscapeUri(resourceData.graph)}{
+      GRAPH ${sparqlEscapeUri(graph)}{
         ${triplesStr}
       }
     };
