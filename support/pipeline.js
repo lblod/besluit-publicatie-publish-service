@@ -22,7 +22,7 @@ async function insertBesluiten(triples, resourceToPublish){
     return;
   }
   let trs = getBesluiten(triples);
-  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
+  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
   await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Besluit>',
@@ -40,7 +40,7 @@ async function insertBvap(triples, resourceToPublish){
                            (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
                            isURI(t.object));
   trs = getBvap(trs);
-  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
+  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
   trs = orderGebeurtNa(trs,
@@ -238,6 +238,8 @@ function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#A
         .filter(e => e.predicate == 'a' && e.object == type)
         .map(t => t.subject)
         .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
+
+  if(!ap1) return triples;
 
   let currIndex = 0;
   let currAp = ap1;
