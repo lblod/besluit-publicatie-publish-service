@@ -1,16 +1,15 @@
 import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
-import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
+import { persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
+import crypto from 'crypto';
 
-//TODO: posities agendapunten, behandeling van AP en besluiten orde
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
-  let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
+  let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. But, might explode memory?
   triples = preProcess(triples);
-
-  ////
+  //
   await insertZitting(triples, resourceToPublish);
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
@@ -26,6 +25,8 @@ async function insertBesluiten(triples, resourceToPublish){
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
+  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Besluit>',
+                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
   await persistExtractedData(trs);
 }
 
@@ -45,6 +46,10 @@ async function insertBvap(triples, resourceToPublish){
   trs = orderGebeurtNa(trs,
                        '<http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt>',
                        '<http://data.vlaanderen.be/ns/besluit#gebeurtNa>');
+
+  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt>',
+                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+
   await persistExtractedData(trs);
 };
 
@@ -52,6 +57,10 @@ async function insertZitting(triples, resourceToPublish){
   let trs = getZittingResource(triples);
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
+
+  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Zitting>',
+                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+
   await persistExtractedData(trs);
 };
 
@@ -70,6 +79,10 @@ async function insertAgendaPunten(triples, resourceToPublish){
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
   trs = orderGebeurtNa(trs);
+
+  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Agendapunt>',
+                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+
   await persistExtractedData(trs);
 };
 
@@ -77,7 +90,9 @@ async function insertNotulen(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_NOTULEN))){
     return;
   }
-  let subject = sparqlEscapeUri(`http://data.lblod.info/vocabularies/lblod/notulen/${uuid()}`);
+  //Make stable uri.
+  let zitting = triples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let subject = sparqlEscapeUri(`http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`);
   let trs = [];
   trs.push({subject, predicate: "a", object: sparqlEscapeUri(`http://xmlns.com/foaf/0.1/Document`)});
   trs.push({subject,
@@ -87,6 +102,10 @@ async function insertNotulen(triples, resourceToPublish){
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
+
+  await batchCleanupResource(trs, '<http://xmlns.com/foaf/0.1/Document>',
+                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+
   await persistExtractedData(trs);
 }
 
@@ -196,6 +215,13 @@ function getZittingResource(triples){
 /*************************************************************
  * HELPERS
  *************************************************************/
+async function batchCleanupResource(triples, type, exceptionList){
+  let subjectUris = new Set(triples.filter(t => t.predicate == 'a' && t.object == type).map(t => t.subject));
+  for(const uri of subjectUris){
+    await cleanUpResource(uri, exceptionList);
+  }
+};
+
 function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#Agendapunt>',
                         gebeurtNa = '<http://data.vlaanderen.be/ns/besluit#aangebrachtNa>'){
   //written for Agendapunten, works on behandeling van agendapunten too.
@@ -227,8 +253,6 @@ function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#A
 
   return triples;
 };
-
-
 
 function linkToZitting(preparedTriples, origTriples, predicate){
   let zitting = origTriples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
@@ -287,6 +311,10 @@ function isURI(str) {
   '(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
   '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
   return pattern.test(str);
+}
+
+async function hashStr(message){
+  return crypto.createHmac('sha256', message).digest('hex');
 }
 
 

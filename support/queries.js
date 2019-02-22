@@ -115,6 +115,22 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
 
 }
 
+async function cleanUpResource(escapedUri, exceptionList, escapedGraph = "<http://mu.semte.ch/graphs/public>"){
+  let queryStr = `
+      DELETE {
+        GRAPH ${escapedGraph}{
+          ${escapedUri} ?p ?o.
+        }
+      } WHERE {
+          GRAPH ${escapedGraph}{
+            ${escapedUri} ?p ?o.
+            FILTER(?p NOT IN (${ exceptionList.join(', ') }))
+          }
+      }
+  `;
+  await query(queryStr);
+}
+
 async function getUuidForResource(escapedUri, graph){
   let queryStr = `
        PREFIX  mu:  <http://mu.semte.ch/vocabularies/core/>
@@ -182,6 +198,7 @@ export { getUnprocessedPublishedResources,
          persistExtractedData,
          updateStatus,
          belongsToType,
+         cleanUpResource,
          PENDING_STATUS,
          FAILED_STATUS,
          SUCCESS_STATUS,
