@@ -4,6 +4,7 @@ import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanne
 import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
+//TODO: posities agendapunten, behandeling van AP en besluiten orde
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
@@ -65,7 +66,7 @@ async function insertNotulen(triples, resourceToPublish){
   trs.push({subject, predicate: "a", object: sparqlEscapeUri(`http://xmlns.com/foaf/0.1/Document`)});
   trs.push({subject,
             predicate:
-            sparqlEscapeUri('http://data.lblod.info/vocabularies/lblod/notulen/inhoud'),
+            sparqlEscapeUri('http://www.w3.org/ns/prov#value'),
             object: sparqlEscapeString(resourceToPublish.rdfaSnippet)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
