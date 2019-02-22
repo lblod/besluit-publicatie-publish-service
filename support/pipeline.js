@@ -10,6 +10,7 @@ async function startPipeline(resourceToPublish){
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
   triples = preProcess(triples);
 
+  ////
   await insertZitting(triples, resourceToPublish);
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
@@ -32,10 +33,18 @@ async function insertBvap(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
-  let trs = getBvap(triples);
+
+  //we really need it to be uri here
+  let trs = triples.filter(t =>
+                           (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
+                           isURI(t.object));
+  trs = getBvap(trs);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
+  trs = orderGebeurtNa(trs,
+                       '<http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt>',
+                       '<http://data.vlaanderen.be/ns/besluit#gebeurtNa>');
   await persistExtractedData(trs);
 };
 
@@ -50,10 +59,17 @@ async function insertAgendaPunten(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_AGENDA))){
     return;
   }
-  let trs = getAgendaPunten(triples);
+
+  //keep on preprocessing. We really need this predicate to point to a uri
+  let trs = triples.filter(t =>
+                           (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa') ||
+                           isURI(t.object));
+
+  trs = getAgendaPunten(trs);
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
+  trs = orderGebeurtNa(trs);
   await persistExtractedData(trs);
 };
 
@@ -180,6 +196,40 @@ function getZittingResource(triples){
 /*************************************************************
  * HELPERS
  *************************************************************/
+function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#Agendapunt>',
+                        gebeurtNa = '<http://data.vlaanderen.be/ns/besluit#aangebrachtNa>'){
+  //written for Agendapunten, works on behandeling van agendapunten too.
+  //assumes AP's are a list.
+  //assumes no duplicates
+  //assumes escaped triples
+  let orderedPunten = [];
+  let orderAps = triples.filter(t => t.predicate == gebeurtNa);
+
+  if(orderAps.length == 0) return triples;
+
+  //find first agendapunt as uri
+  let ap1 = triples
+        .filter(e => e.predicate == 'a' && e.object == type)
+        .map(t => t.subject)
+        .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
+
+  let currIndex = 0;
+  let currAp = ap1;
+
+  triples.push({subject: ap1 , predicate: '<http://schema.org/position>' , object: sparqlEscapeInt(currIndex) });
+
+  while(currIndex < orderAps.length){
+    let nextAp = orderAps.find(t => t.object == currAp);
+    currIndex += 1;
+    triples.push({subject: nextAp.subject , predicate: '<http://schema.org/position>' , object: sparqlEscapeInt(currIndex) });
+    currAp = nextAp.subject;
+  }
+
+  return triples;
+};
+
+
+
 function linkToZitting(preparedTriples, origTriples, predicate){
   let zitting = origTriples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
   let resources = preparedTriples.filter(t => t.predicate == 'a');
@@ -226,5 +276,18 @@ function flatTriples(node){
   let contexts = analyse( node ).map((c) => c.context);
   return contexts.reduce((acc, e) => { return [ ...acc, ...e]; }, []);
 }
+
+function isURI(str) {
+  //Fuck this: see https://stackoverflow.com/a/45567717/1092608
+  var pattern = new RegExp('^((ft|htt)ps?:\\/\\/)?'+ // protocol
+  '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name and extension
+  '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+  '(\\:\\d+)?'+ // port
+  '(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
+  '(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
+  '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+  return pattern.test(str);
+}
+
 
 export { startPipeline }
