@@ -4,7 +4,6 @@ import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanne
 import { persistExtractedData, belongsToType, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 
-//TODO: notulen.
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. Might explode memory?
@@ -24,6 +23,7 @@ async function insertBesluiten(triples, resourceToPublish){
   let trs = getBesluiten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/besluit");
   linkToPublishedResource(trs, resourceToPublish.resource);
+  trs = postProcess(trs);
   await persistExtractedData(trs);
 }
 
@@ -34,12 +34,14 @@ async function insertBvap(triples, resourceToPublish){
   let trs = getBvap(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/behandeling-van-agendapunt");
   linkToPublishedResource(trs, resourceToPublish.resource);
+  trs = postProcess(trs);
   await persistExtractedData(trs);
 };
 
 async function insertZitting(triples, resourceToPublish){
   let trs = getZittingResource(triples);
   linkToPublishedResource(trs, resourceToPublish.resource);
+  trs = postProcess(trs);
   await persistExtractedData(trs);
 };
 
@@ -50,6 +52,7 @@ async function insertAgendaPunten(triples, resourceToPublish){
   let trs = getAgendaPunten(triples);
   linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
   linkToPublishedResource(trs, resourceToPublish.resource);
+  trs = postProcess(trs);
   await persistExtractedData(trs);
 };
 
@@ -66,6 +69,7 @@ async function insertNotulen(triples, resourceToPublish){
             object: sparqlEscapeString(resourceToPublish.rdfaSnippet)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
+  trs = postProcess(trs);
   await persistExtractedData(trs);
 }
 
@@ -202,7 +206,10 @@ function preProcess(triples){
     }
     return t;
   });
+  return triples;
+};
 
+function postProcess(triples){
   //remove duplicates
   let cleanedT = [];
   for(const ot of triples){
@@ -212,7 +219,7 @@ function preProcess(triples){
     }
   }
   return cleanedT;
-};
+}
 
 function flatTriples(node){
   let contexts = analyse( node ).map((c) => c.context);
