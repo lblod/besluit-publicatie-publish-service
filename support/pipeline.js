@@ -50,7 +50,7 @@ async function insertAgendaPunten(triples, resourceToPublish){
     return;
   }
   let trs = getAgendaPunten(triples);
-  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/linked/agendapunt");
+  linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
   await persistExtractedData(trs);
