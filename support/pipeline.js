@@ -1,7 +1,7 @@
 import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
-import { persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
+import { getPropertyDataForZitting, persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import crypto from 'crypto';
 
@@ -9,7 +9,7 @@ async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. But, might explode memory?
   triples = preProcess(triples);
-  //
+
   await insertZitting(triples, resourceToPublish);
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
@@ -21,13 +21,13 @@ async function insertBesluiten(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
-  let trs = getBesluiten(triples);
-  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit");
-  linkToPublishedResource(trs, resourceToPublish.resource);
-  trs = postProcess(trs);
-  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Besluit>',
-                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
-  await persistExtractedData(trs);
+  let data = getBesluiten(triples);
+  linkToZitting(data.trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit");
+  linkToPublishedResource(data.trs, resourceToPublish.resource);
+  data.trs = postProcess(data.trs);
+  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Besluit',
+                             ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
+  await persistExtractedData(data.trs, data.poi);
 }
 
 async function insertBvap(triples, resourceToPublish){
@@ -39,29 +39,29 @@ async function insertBvap(triples, resourceToPublish){
   let trs = triples.filter(t =>
                            (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
                            isURI(t.object));
-  trs = getBvap(trs);
-  linkToZitting(trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap");
-  linkToPublishedResource(trs, resourceToPublish.resource);
-  trs = postProcess(trs);
-  trs = orderGebeurtNa(trs,
-                       '<http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt>',
-                       '<http://data.vlaanderen.be/ns/besluit#gebeurtNa>');
+  let data = getBvap(trs);
+  linkToZitting(data.trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap");
+  linkToPublishedResource(data.trs, resourceToPublish.resource);
+  data.trs = postProcess(data.trs);
+  data.trs = orderGebeurtNa(data.trs,
+                       'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
+                       'http://data.vlaanderen.be/ns/besluit#gebeurtNa');
 
-  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt>',
-                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
+                             ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
 
-  await persistExtractedData(trs);
+  await persistExtractedData(data.trs, data.poi);
 };
 
 async function insertZitting(triples, resourceToPublish){
-  let trs = getZittingResource(triples);
-  linkToPublishedResource(trs, resourceToPublish.resource);
-  trs = postProcess(trs);
+  let data = getZittingResource(triples);
+  linkToPublishedResource(data.trs, resourceToPublish.resource);
+  data.trs = postProcess(data.trs);
 
-  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Zitting>',
-                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Zitting',
+                             ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
 
-  await persistExtractedData(trs);
+  await persistExtractedData(data.trs, data.poi);
 };
 
 async function insertAgendaPunten(triples, resourceToPublish){
@@ -74,16 +74,16 @@ async function insertAgendaPunten(triples, resourceToPublish){
                            (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa') ||
                            isURI(t.object));
 
-  trs = getAgendaPunten(trs);
-  linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
-  linkToPublishedResource(trs, resourceToPublish.resource);
-  trs = postProcess(trs);
-  trs = orderGebeurtNa(trs);
+  let data = getAgendaPunten(trs);
+  linkToZitting(data.trs, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
+  linkToPublishedResource(data.trs, resourceToPublish.resource);
+  data.trs = postProcess(data.trs);
+  data.trs = orderGebeurtNa(data.trs);
 
-  await batchCleanupResource(trs, '<http://data.vlaanderen.be/ns/besluit#Agendapunt>',
-                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Agendapunt', ['http://www.w3.org/ns/prov#wasDerivedFrom',
+                                                                                          'http://mu.semte.ch/vocabularies/core/uuid']);
 
-  await persistExtractedData(trs);
+  await persistExtractedData(data.trs, data.poi);
 };
 
 async function insertNotulen(triples, resourceToPublish){
@@ -92,25 +92,27 @@ async function insertNotulen(triples, resourceToPublish){
   }
   //Make stable uri.
   let zitting = triples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
-  let subject = sparqlEscapeUri(`http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`);
+  let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
-  trs.push({subject, predicate: "a", object: sparqlEscapeUri(`http://xmlns.com/foaf/0.1/Document`)});
-  trs.push({subject,
-            predicate:
-            sparqlEscapeUri('http://www.w3.org/ns/prov#value'),
-            object: sparqlEscapeString(resourceToPublish.rdfaSnippet)});
+  trs.push({subject, predicate: "a", object: `http://xmlns.com/foaf/0.1/Document`});
+  trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object: resourceToPublish.rdfaSnippet});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
 
-  await batchCleanupResource(trs, '<http://xmlns.com/foaf/0.1/Document>',
-                             ['<http://www.w3.org/ns/prov#wasDerivedFrom>', '<http://mu.semte.ch/vocabularies/core/uuid>']);
+  let poi = [ { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
+              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
+              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftNotulen', escapeObjectF: sparqlEscapeUri },
+              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
+            ];
 
-  await persistExtractedData(trs);
+  await batchCleanupBeforeUpdate(trs, 'http://xmlns.com/foaf/0.1/Document', ['http://www.w3.org/ns/prov#wasDerivedFrom',
+                                                                             'http://mu.semte.ch/vocabularies/core/uuid']);
+  await persistExtractedData(trs, poi);
 }
 
 function getBesluiten(triples, resourceToPublish){
-  let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
+  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
 
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
@@ -124,21 +126,17 @@ function getBesluiten(triples, resourceToPublish){
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#language', escapeObjectF: sparqlEscapeString },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#description', escapeObjectF: sparqlEscapeString },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#has_part', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString }
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit', escapeObjectF: sparqlEscapeUri }
             ];
 
-  tois = triples.filter(t => tois.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-
-  return tois.map(t => {
-    let p =  poi.find(p => p.predicate == t.predicate);
-    let escapedPredicate = 'a' == p.predicate ? 'a': sparqlEscapeUri(t.predicate);
-    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
-  });
-
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
+  return { trs, poi };
 }
 
 function getBvap(triples){
-  let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt');
+  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt');
 
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
@@ -150,20 +148,17 @@ function getBvap(triples){
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftStemming', escapeObjectF: sparqlEscapeUri },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter', escapeObjectF: sparqlEscapeUri },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#openbaar', escapeObjectF: sparqlEscapeBool },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://schema.org/position', escapeObjectF: sparqlEscapeInt },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap', escapeObjectF: sparqlEscapeUri }
             ];
 
-  tois = triples.filter(t => tois.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-
-  return tois.map(t => {
-    let p =  poi.find(p => p.predicate == t.predicate);
-    let escapedPredicate = 'a' == p.predicate?'a':sparqlEscapeUri(t.predicate);
-    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
-  });
-
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
+  return { trs, poi };
 }
 
 function getAgendaPunten(triples){
-  let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Agendapunt');
+  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Agendapunt');
 
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
@@ -173,21 +168,19 @@ function getAgendaPunten(triples){
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftOntwerpbesluit', escapeObjectF: sparqlEscapeUri },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/references', escapeObjectF: sparqlEscapeUri },
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/title', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#Agendapunt.type', escapeObjectF: sparqlEscapeUri }
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#Agendapunt.type', escapeObjectF: sparqlEscapeUri },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://schema.org/position', escapeObjectF: sparqlEscapeInt },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#behandelt', escapeObjectF: sparqlEscapeUri }
             ];
 
-  tois = triples.filter(t => tois.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-
-  return tois.map(t => {
-    let p =  poi.find(p => p.predicate == t.predicate);
-    let escapedPredicate = 'a' == p.predicate?'a':sparqlEscapeUri(t.predicate);
-    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
-  });
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
+  return { trs, poi };
 };
 
 
 function getZittingResource(triples){
-  let tois = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
 
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri},
@@ -201,29 +194,30 @@ function getZittingResource(triples){
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftSecretaris', escapeObjectF: sparqlEscapeUri},
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter', escapeObjectF: sparqlEscapeUri},
              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftZittingsverslag', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#atLocation', escapeObjectF: sparqlEscapeUri}];
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#atLocation', escapeObjectF: sparqlEscapeUri },
+             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
+            ];
 
-  tois = triples.filter(t => tois.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-
-  return tois.map(t => {
-    let p =  poi.find(p => p.predicate == t.predicate);
-    let escapedPredicate = 'a' == p.predicate?'a':sparqlEscapeUri(t.predicate);
-    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
-  });
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
+  return { trs, poi };
 };
 
 /*************************************************************
  * HELPERS
  *************************************************************/
-async function batchCleanupResource(triples, type, exceptionList){
+async function cleanUpDeltaData(zittingUri, zittingProperty){
+  //TODO
+}
+
+async function batchCleanupBeforeUpdate(triples, type, exceptionList){
   let subjectUris = new Set(triples.filter(t => t.predicate == 'a' && t.object == type).map(t => t.subject));
   for(const uri of subjectUris){
     await cleanUpResource(uri, exceptionList);
   }
 };
 
-function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#Agendapunt>',
-                        gebeurtNa = '<http://data.vlaanderen.be/ns/besluit#aangebrachtNa>'){
+function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Agendapunt',
+                        gebeurtNa = 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa'){
   //written for Agendapunten, works on behandeling van agendapunten too.
   //assumes AP's are a list.
   //assumes no duplicates
@@ -244,12 +238,12 @@ function orderGebeurtNa(triples, type = '<http://data.vlaanderen.be/ns/besluit#A
   let currIndex = 0;
   let currAp = ap1;
 
-  triples.push({subject: ap1 , predicate: '<http://schema.org/position>' , object: sparqlEscapeInt(currIndex) });
+  triples.push({subject: ap1 , predicate: 'http://schema.org/position' , object: currIndex });
 
   while(currIndex < orderAps.length){
     let nextAp = orderAps.find(t => t.object == currAp);
     currIndex += 1;
-    triples.push({subject: nextAp.subject , predicate: '<http://schema.org/position>' , object: sparqlEscapeInt(currIndex) });
+    triples.push({subject: nextAp.subject , predicate: 'http://schema.org/position' , object: currIndex });
     currAp = nextAp.subject;
   }
 
@@ -260,16 +254,16 @@ function linkToZitting(preparedTriples, origTriples, predicate){
   let zitting = origTriples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
   let resources = preparedTriples.filter(t => t.predicate == 'a');
   resources.forEach(t => {
-    preparedTriples.push({subject: sparqlEscapeUri(zitting.subject), predicate: sparqlEscapeUri(predicate), object: t.subject});
+    preparedTriples.push({subject: zitting.subject, predicate: predicate, object: t.subject});
   });
   return preparedTriples;
 }
 
 function linkToPublishedResource(preparedTriples, resourceUri){
-  let predicate = sparqlEscapeUri('http://www.w3.org/ns/prov#wasDerivedFrom');
+  let predicate = 'http://www.w3.org/ns/prov#wasDerivedFrom';
   let resources = preparedTriples.filter(t => t.predicate == 'a'); //extract the types
     resources.forEach(t => {
-      preparedTriples.push({subject: t.subject, predicate, object: sparqlEscapeUri(resourceUri)});
+      preparedTriples.push({subject: t.subject, predicate, object: resourceUri});
     });
   return preparedTriples;
 }
@@ -318,6 +312,5 @@ function isURI(str) {
 async function hashStr(message){
   return crypto.createHmac('sha256', message).digest('hex');
 }
-
 
 export { startPipeline }

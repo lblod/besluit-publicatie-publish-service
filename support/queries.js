@@ -90,11 +90,14 @@ async function updateStatus(resource, status, attempts = 1){
   await query(queryStr);
 };
 
-async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/public"){
+async function persistExtractedData(triples, escapeFunctionsData, graph = "http://mu.semte.ch/graphs/public"){
   //we assume triples are expanded
   if(triples.length == 0){
     return;
   }
+
+  graph = sparqlEscapeUri(graph);
+  triples = applyEscapeFunctionData(triples, escapeFunctionsData);
 
   let resources = triples.filter(isAResource);
 
@@ -105,7 +108,7 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
   let triplesStr = triples.map(t => `${t.subject} ${t.predicate} ${t.object}.`).join('\n');
   let insertStr = `
     INSERT DATA{
-      GRAPH ${sparqlEscapeUri(graph)}{
+      GRAPH ${graph}{
         ${triplesStr}
       }
     };
@@ -115,27 +118,33 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
 
 }
 
-async function cleanUpResource(escapedUri, exceptionList, escapedGraph = "<http://mu.semte.ch/graphs/public>"){
+async function cleanUpResource(uri, exceptionList = [], graph = "http://mu.semte.ch/graphs/public"){
   let queryStr = `
       DELETE {
-        GRAPH ${escapedGraph}{
-          ${escapedUri} ?p ?o.
+        GRAPH ${sparqlEscapeUri(graph)}{
+          ${sparqlEscapeUri(uri)} ?p ?o.
         }
       } WHERE {
-          GRAPH ${escapedGraph}{
-            ${escapedUri} ?p ?o.
-            FILTER(?p NOT IN (${ exceptionList.join(', ') }))
+          GRAPH ${sparqlEscapeUri(graph)}{
+            ${sparqlEscapeUri(uri)} ?p ?o.
+            FILTER(?p NOT IN (${ exceptionList.map(uri => sparqlEscapeUri(uri)).join(', ') }))
           }
       }
   `;
   await query(queryStr);
-}
+};
 
-async function getUuidForResource(escapedUri, graph){
+async function getPropertyDataForZitting(){
+
+
+};
+
+
+async function getUuidForResource(escapedUri, escapedGraph ){
   let queryStr = `
        PREFIX  mu:  <http://mu.semte.ch/vocabularies/core/>
        SELECT DISTINCT ?uuid{
-         GRAPH ${sparqlEscapeUri(graph)}{
+         GRAPH ${escapedGraph}{
             ${escapedUri} mu:uuid ?uuid.
          }
        }
@@ -148,7 +157,7 @@ async function getUuidForResource(escapedUri, graph){
   let insertStr = `
        PREFIX  mu:  <http://mu.semte.ch/vocabularies/core/>
        INSERT DATA{
-         GRAPH ${sparqlEscapeUri(graph)} {
+         GRAPH ${escapedGraph} {
             ${escapedUri} mu:uuid ${sparqlEscapeString(exUuid)}.
          }
        }
@@ -162,6 +171,13 @@ async function getUuidForResource(escapedUri, graph){
 /*************************************************************
  * HELPERS
  *************************************************************/
+function applyEscapeFunctionData(triples, escapeData){
+  return triples.map(t => {
+    let p =  escapeData.find(p => p.predicate == t.predicate);
+    let escapedPredicate = 'a' == p.predicate?'a':sparqlEscapeUri(t.predicate);
+    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
+  });
+}
 
 function isAResource(triple){
   return triple.predicate == 'a';
@@ -199,6 +215,7 @@ export { getUnprocessedPublishedResources,
          updateStatus,
          belongsToType,
          cleanUpResource,
+         getPropertyDataForZitting,
          PENDING_STATUS,
          FAILED_STATUS,
          SUCCESS_STATUS,
