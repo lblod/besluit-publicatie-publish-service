@@ -134,9 +134,17 @@ async function cleanUpResource(uri, exceptionList = [], graph = "http://mu.semte
   await query(queryStr);
 };
 
-async function getPropertyDataForZitting(){
-
-
+async function getRelationDataForZitting(zittingUri, relationUri, graph = "http://mu.semte.ch/graphs/public"){
+  let queryStr = `
+       SELECT DISTINCT ?o
+       WHERE {
+          GRAPH ${sparqlEscapeUri(graph)}{
+            ${sparqlEscapeUri(zittingUri)} ${sparqlEscapeUri(relationUri)} ?o.
+          }
+      }
+  `;
+  let res = await query(queryStr);
+  return parseResult(res);
 };
 
 
@@ -215,7 +223,7 @@ export { getUnprocessedPublishedResources,
          updateStatus,
          belongsToType,
          cleanUpResource,
-         getPropertyDataForZitting,
+         getRelationDataForZitting,
          PENDING_STATUS,
          FAILED_STATUS,
          SUCCESS_STATUS,

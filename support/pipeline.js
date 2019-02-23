@@ -1,7 +1,7 @@
 import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
-import { getPropertyDataForZitting, persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
+import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import crypto from 'crypto';
 
@@ -22,9 +22,12 @@ async function insertBesluiten(triples, resourceToPublish){
     return;
   }
   let data = getBesluiten(triples);
-  linkToZitting(data.trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit");
+  let linkBesP = "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit";
+  linkToZitting(data.trs, triples, linkBesP);
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
+
+  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBesP, data.trs);
   await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Besluit',
                              ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
   await persistExtractedData(data.trs, data.poi);
@@ -39,14 +42,16 @@ async function insertBvap(triples, resourceToPublish){
   let trs = triples.filter(t =>
                            (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
                            isURI(t.object));
+  let linkBvapP = "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap";
   let data = getBvap(trs);
-  linkToZitting(data.trs, triples, "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap");
+  linkToZitting(data.trs, triples, linkBvapP);
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
   data.trs = orderGebeurtNa(data.trs,
                        'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
                        'http://data.vlaanderen.be/ns/besluit#gebeurtNa');
 
+  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBvapP, data.trs);
   await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
                              ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
 
@@ -75,11 +80,13 @@ async function insertAgendaPunten(triples, resourceToPublish){
                            isURI(t.object));
 
   let data = getAgendaPunten(trs);
-  linkToZitting(data.trs, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
+  let linkBP = "http://data.vlaanderen.be/ns/besluit#behandelt";
+  linkToZitting(data.trs, triples, linkBP);
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
   data.trs = orderGebeurtNa(data.trs);
 
+  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBP, data.trs);
   await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Agendapunt', ['http://www.w3.org/ns/prov#wasDerivedFrom',
                                                                                           'http://mu.semte.ch/vocabularies/core/uuid']);
 
@@ -91,7 +98,7 @@ async function insertNotulen(triples, resourceToPublish){
     return;
   }
   //Make stable uri.
-  let zitting = triples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let zitting = triples.find(isAZitting);
   let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
   trs.push({subject, predicate: "a", object: `http://xmlns.com/foaf/0.1/Document`});
@@ -180,7 +187,7 @@ function getAgendaPunten(triples){
 
 
 function getZittingResource(triples){
-  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let trs = triples.filter(isAZitting);
 
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri},
@@ -205,9 +212,18 @@ function getZittingResource(triples){
 /*************************************************************
  * HELPERS
  *************************************************************/
-async function cleanUpDeltaData(zittingUri, zittingProperty){
-  //TODO
-}
+function isAZitting(triple){
+  return triple.predicate == 'a' && triple.object == 'http://data.vlaanderen.be/ns/besluit#Zitting';
+};
+
+async function cleanupDeltaRelationsToZitting(zittingTriple, zittingProperty, newTriples){
+  let res = await getRelationDataForZitting(zittingTriple.subject, zittingProperty);
+  let uris = res.map(d => d.o);
+  let obsoleteUris = uris.filter(uri => !newTriples.find(t => t.subject == uri));
+  for(const uri of obsoleteUris){
+    await cleanUpResource(uri);
+  }
+};
 
 async function batchCleanupBeforeUpdate(triples, type, exceptionList){
   let subjectUris = new Set(triples.filter(t => t.predicate == 'a' && t.object == type).map(t => t.subject));
@@ -221,7 +237,6 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
   //written for Agendapunten, works on behandeling van agendapunten too.
   //assumes AP's are a list.
   //assumes no duplicates
-  //assumes escaped triples
   let orderedPunten = [];
   let orderAps = triples.filter(t => t.predicate == gebeurtNa);
 
@@ -251,7 +266,7 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
 };
 
 function linkToZitting(preparedTriples, origTriples, predicate){
-  let zitting = origTriples.find(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Zitting');
+  let zitting = origTriples.find(isAZitting);
   let resources = preparedTriples.filter(t => t.predicate == 'a');
   resources.forEach(t => {
     preparedTriples.push({subject: zitting.subject, predicate: predicate, object: t.subject});
