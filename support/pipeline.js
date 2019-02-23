@@ -5,6 +5,14 @@ import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUp
 import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import crypto from 'crypto';
 
+/**
+ * Main entry point for extraction of data.
+ * Assumes
+ * ------
+ *  - All Rdfa snippets contain a Zitting
+ *  - Latest published snippet, is truth. E.g. a spoedeisended agenda will overrule data from aanvullende agenda
+*   - All extracted resources, are linked to a Zitting. This is an exstension on the AP.
+ **/
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
   let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. But, might explode memory?
@@ -17,6 +25,21 @@ async function startPipeline(resourceToPublish){
   await insertNotulen(triples, resourceToPublish);
 };
 
+/**
+ * Extracts besluiten from triples and saves them.
+ * What is does
+ * ------------
+ * 1. checks if published resource is a besluitenlijst
+ * 2. extracts all ?p ?o (the ones we want) from the besluiten
+ * 3. links all besluiten to zitting.
+ * 4. links also besluiten to published resource
+ * 5. some postprocessing
+ * 6. cleaning obsolete deltas. E.g a snippet removes some besluiten. We want it (for now) reflected in DB
+ * 7. cleans the triples which need update values
+ * 8. saves it
+ *
+ * Alls the insert* functions have roughly the same structure. Won't document them here.
+ */
 async function insertBesluiten(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
@@ -118,7 +141,161 @@ async function insertNotulen(triples, resourceToPublish){
   await persistExtractedData(trs, poi);
 }
 
-function getBesluiten(triples, resourceToPublish){
+/*************************************************************
+ * HELPERS
+ *************************************************************/
+
+function isAZitting(triple){
+  return triple.predicate == 'a' && triple.object == 'http://data.vlaanderen.be/ns/besluit#Zitting';
+};
+
+/*
+ * If new set of resources contains less resources then the previous version, remove them here.
+ */
+async function cleanupDeltaRelationsToZitting(zittingTriple, zittingProperty, newTriples){
+  let res = await getRelationDataForZitting(zittingTriple.subject, zittingProperty);
+  let uris = res.map(d => d.o);
+  let obsoleteUris = uris.filter(uri => !newTriples.find(t => t.subject == uri));
+  for(const uri of obsoleteUris){
+    await cleanUpResource(uri);
+  }
+};
+
+/*
+ * A bunch of triples could need an update, first remove their previous values
+ */
+async function batchCleanupBeforeUpdate(triples, type, exceptionList){
+  let subjectUris = new Set(triples.filter(t => t.predicate == 'a' && t.object == type).map(t => t.subject));
+  for(const uri of subjectUris){
+    await cleanUpResource(uri, exceptionList);
+  }
+};
+
+/*
+ * Adds order to bvap and agendapunten (AP extension)
+ */
+function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Agendapunt',
+                        gebeurtNa = 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa'){
+  //written for Agendapunten, works on behandeling van agendapunten too.
+  //assumes AP's are a list.
+  //assumes no duplicates
+  let orderedPunten = [];
+  let orderAps = triples.filter(t => t.predicate == gebeurtNa);
+
+  if(orderAps.length == 0) return triples;
+
+  //find first agendapunt as uri
+  let ap1 = triples
+        .filter(e => e.predicate == 'a' && e.object == type)
+        .map(t => t.subject)
+        .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
+
+  if(!ap1) return triples;
+
+  let currIndex = 0;
+  let currAp = ap1;
+
+  triples.push({subject: ap1 , predicate: 'http://schema.org/position' , object: currIndex });
+
+  while(currIndex < orderAps.length){
+    let nextAp = orderAps.find(t => t.object == currAp);
+    currIndex += 1;
+    triples.push({subject: nextAp.subject , predicate: 'http://schema.org/position' , object: currIndex });
+    currAp = nextAp.subject;
+  }
+
+  return triples;
+};
+
+/*
+ * links resources to zitting
+ */
+function linkToZitting(preparedTriples, origTriples, predicate){
+  let zitting = origTriples.find(isAZitting);
+  let resources = preparedTriples.filter(t => t.predicate == 'a');
+  resources.forEach(t => {
+    preparedTriples.push({subject: zitting.subject, predicate: predicate, object: t.subject});
+  });
+  return preparedTriples;
+}
+
+/*
+ * links resources to publishedResource
+ */
+function linkToPublishedResource(preparedTriples, resourceUri){
+  let predicate = 'http://www.w3.org/ns/prov#wasDerivedFrom';
+  let resources = preparedTriples.filter(t => t.predicate == 'a'); //extract the types
+    resources.forEach(t => {
+      preparedTriples.push({subject: t.subject, predicate, object: resourceUri});
+    });
+  return preparedTriples;
+}
+
+/*
+ * encapsulate some preprocessing, e.g. remapping stuff etc
+ */
+function preProcess(triples){
+  //remap triples (for backwards compatibilty, will be deleted one day)
+  let remapP = {'http://data.vlaanderen.be/ns/besluit#heeftAgendapunt': 'http://data.vlaanderen.be/ns/besluit#behandelt'};
+  triples =  triples.map(t =>  {
+    if(remapP[t.predicate]){
+      t.predicate = remapP[t.predicate];
+    }
+    return t;
+  });
+  return triples;
+};
+
+/*
+ * encapsulate some post processing, e.g removing duplicates
+ */
+function postProcess(triples){
+  //remove duplicates
+  let cleanedT = [];
+  for(const ot of triples){
+    let existingT = cleanedT.find( t => JSON.stringify(t) === JSON.stringify(ot) ); //fair enough
+    if(!existingT){
+      cleanedT.push(ot);
+    }
+  }
+  return cleanedT;
+}
+
+/*
+ * flatten output from contextscanner
+ */
+function flatTriples(node){
+  let contexts = analyse( node ).map((c) => c.context);
+  return contexts.reduce((acc, e) => { return [ ...acc, ...e]; }, []);
+}
+
+/*
+ * checks if URI (stolen from SO)
+ */
+function isURI(str) {
+  //Fuck this: see https://stackoverflow.com/a/45567717/1092608
+  var pattern = new RegExp('^((ft|htt)ps?:\\/\\/)?'+ // protocol
+  '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name and extension
+  '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
+  '(\\:\\d+)?'+ // port
+  '(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
+  '(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
+  '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
+  return pattern.test(str);
+}
+
+/*
+ * hash string
+ */
+async function hashStr(message){
+  return crypto.createHmac('sha256', message).digest('hex');
+}
+
+/*
+ * Weird intermediate function which does probably too much. Anyway it came handy for here right now.
+ * Extracts the triples we want, and also provides an escapefunction mapping per S and O for serializing to db
+ */
+function getBesluiten(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
 
   //We are conservative in what to persist; we respect applicatieprofiel
@@ -208,124 +385,5 @@ function getZittingResource(triples){
   trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
   return { trs, poi };
 };
-
-/*************************************************************
- * HELPERS
- *************************************************************/
-function isAZitting(triple){
-  return triple.predicate == 'a' && triple.object == 'http://data.vlaanderen.be/ns/besluit#Zitting';
-};
-
-async function cleanupDeltaRelationsToZitting(zittingTriple, zittingProperty, newTriples){
-  let res = await getRelationDataForZitting(zittingTriple.subject, zittingProperty);
-  let uris = res.map(d => d.o);
-  let obsoleteUris = uris.filter(uri => !newTriples.find(t => t.subject == uri));
-  for(const uri of obsoleteUris){
-    await cleanUpResource(uri);
-  }
-};
-
-async function batchCleanupBeforeUpdate(triples, type, exceptionList){
-  let subjectUris = new Set(triples.filter(t => t.predicate == 'a' && t.object == type).map(t => t.subject));
-  for(const uri of subjectUris){
-    await cleanUpResource(uri, exceptionList);
-  }
-};
-
-function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Agendapunt',
-                        gebeurtNa = 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa'){
-  //written for Agendapunten, works on behandeling van agendapunten too.
-  //assumes AP's are a list.
-  //assumes no duplicates
-  let orderedPunten = [];
-  let orderAps = triples.filter(t => t.predicate == gebeurtNa);
-
-  if(orderAps.length == 0) return triples;
-
-  //find first agendapunt as uri
-  let ap1 = triples
-        .filter(e => e.predicate == 'a' && e.object == type)
-        .map(t => t.subject)
-        .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
-
-  if(!ap1) return triples;
-
-  let currIndex = 0;
-  let currAp = ap1;
-
-  triples.push({subject: ap1 , predicate: 'http://schema.org/position' , object: currIndex });
-
-  while(currIndex < orderAps.length){
-    let nextAp = orderAps.find(t => t.object == currAp);
-    currIndex += 1;
-    triples.push({subject: nextAp.subject , predicate: 'http://schema.org/position' , object: currIndex });
-    currAp = nextAp.subject;
-  }
-
-  return triples;
-};
-
-function linkToZitting(preparedTriples, origTriples, predicate){
-  let zitting = origTriples.find(isAZitting);
-  let resources = preparedTriples.filter(t => t.predicate == 'a');
-  resources.forEach(t => {
-    preparedTriples.push({subject: zitting.subject, predicate: predicate, object: t.subject});
-  });
-  return preparedTriples;
-}
-
-function linkToPublishedResource(preparedTriples, resourceUri){
-  let predicate = 'http://www.w3.org/ns/prov#wasDerivedFrom';
-  let resources = preparedTriples.filter(t => t.predicate == 'a'); //extract the types
-    resources.forEach(t => {
-      preparedTriples.push({subject: t.subject, predicate, object: resourceUri});
-    });
-  return preparedTriples;
-}
-
-function preProcess(triples){
-  //remap triples (for backwards compatibilty, will be deleted one day)
-  let remapP = {'http://data.vlaanderen.be/ns/besluit#heeftAgendapunt': 'http://data.vlaanderen.be/ns/besluit#behandelt'};
-  triples =  triples.map(t =>  {
-    if(remapP[t.predicate]){
-      t.predicate = remapP[t.predicate];
-    }
-    return t;
-  });
-  return triples;
-};
-
-function postProcess(triples){
-  //remove duplicates
-  let cleanedT = [];
-  for(const ot of triples){
-    let existingT = cleanedT.find( t => JSON.stringify(t) === JSON.stringify(ot) ); //fair enough
-    if(!existingT){
-      cleanedT.push(ot);
-    }
-  }
-  return cleanedT;
-}
-
-function flatTriples(node){
-  let contexts = analyse( node ).map((c) => c.context);
-  return contexts.reduce((acc, e) => { return [ ...acc, ...e]; }, []);
-}
-
-function isURI(str) {
-  //Fuck this: see https://stackoverflow.com/a/45567717/1092608
-  var pattern = new RegExp('^((ft|htt)ps?:\\/\\/)?'+ // protocol
-  '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // domain name and extension
-  '((\\d{1,3}\\.){3}\\d{1,3}))'+ // OR ip (v4) address
-  '(\\:\\d+)?'+ // port
-  '(\\/[-a-z\\d%@_.~+&:]*)*'+ // path
-  '(\\?[;&a-z\\d%@_.,~+&:=-]*)?'+ // query string
-  '(\\#[-a-z\\d_]*)?$','i'); // fragment locator
-  return pattern.test(str);
-}
-
-async function hashStr(message){
-  return crypto.createHmac('sha256', message).digest('hex');
-}
 
 export { startPipeline }
