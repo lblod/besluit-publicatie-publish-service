@@ -15,8 +15,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/lblod/notulen-prepublish-service"
+    "url": "https://github.com/lblod/besluit-publicatie-publish-service"
   },
-  "author": "Aad Versteden",
+  "author": "redpencil.io",
   "license": "MIT"
 }
