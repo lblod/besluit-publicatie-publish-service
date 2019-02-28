@@ -87,7 +87,8 @@ async function insertZitting(triples, resourceToPublish){
   data.trs = postProcess(data.trs);
 
   await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Zitting',
-                             ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid']);
+                                 ['http://www.w3.org/ns/prov#wasDerivedFrom', 'http://mu.semte.ch/vocabularies/core/uuid',
+                                  'http://data.vlaanderen.be/ns/besluit#behandelt']); // TODO remove already published agenda only if new resource to publish is an agenda
 
   await persistExtractedData(data.trs, data.poi);
 };
