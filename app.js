@@ -26,7 +26,7 @@ async function startPublishing(){
   for(const item of unprocessedResources){
     console.log(`-- Locking resources: ${item.resource}`);
     item.numberOfRetries = parseInt((item.numberOfRetries || 0)) + 1;
-    await updateStatus(item, PENDING_STATUS, );
+    await updateStatus(item, PENDING_STATUS);
   }
 
   for (const item of unprocessedResources) {
