@@ -11,7 +11,8 @@ import crypto from 'crypto';
  * ------
  *  - All Rdfa snippets contain a Zitting
  *  - Latest published snippet, is truth. E.g. a spoedeisended agenda will overrule data from aanvullende agenda
-*   - All extracted resources, are linked to a Zitting. This is an exstension on the AP.
+*   - All extracted resources, are linked to a Zitting.
+      This is an exstension on the AP. Because users can publish besluitenlijst before publising agenda. The same for behandeling van agendapunt
  **/
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
@@ -64,6 +65,7 @@ async function insertBvap(triples, resourceToPublish){
                            isURI(t.object));
   let linkBvapP = "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap";
   let data = getBvap(trs);
+
   linkToZitting(data.trs, triples, linkBvapP);
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
