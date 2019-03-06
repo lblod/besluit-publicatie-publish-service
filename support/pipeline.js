@@ -125,7 +125,7 @@ async function insertNotulen(triples, resourceToPublish){
   let zitting = triples.find(isAZitting);
   let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
-  trs.push({subject, predicate: "a", object: `http://xmlns.com/foaf/0.1/Document`});
+  trs.push({subject, predicate: "a", object: `http://mu.semte.ch/vocabularies/ext/Notulen`});
   trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object: resourceToPublish.rdfaSnippet});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
@@ -137,7 +137,7 @@ async function insertNotulen(triples, resourceToPublish){
               { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
             ];
 
-  await batchCleanupBeforeUpdate(trs, 'http://xmlns.com/foaf/0.1/Document', ['http://www.w3.org/ns/prov#wasDerivedFrom',
+  await batchCleanupBeforeUpdate(trs, 'http://mu.semte.ch/vocabularies/ext/Notulen', ['http://www.w3.org/ns/prov#wasDerivedFrom',
                                                                              'http://mu.semte.ch/vocabularies/core/uuid']);
   await persistExtractedData(trs, poi);
 }
