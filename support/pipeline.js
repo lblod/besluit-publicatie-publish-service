@@ -50,13 +50,6 @@ async function insertBesluiten(triples, resourceToPublish){
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
 
-  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBesP, data.trs);
-  await batchCleanupBeforeUpdate(data.trs,
-                                 'http://data.vlaanderen.be/ns/besluit#Besluit',
-                                 ['http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-                                  'http://mu.semte.ch/vocabularies/core/uuid',
-                                  'http://www.w3.org/ns/prov#wasDerivedFrom',
-                                  'http://mu.semte.ch/vocabularies/core/uuid']);
   await persistExtractedData(data.trs, data.poi);
 }
 
@@ -78,12 +71,6 @@ async function insertBvap(triples, resourceToPublish){
                        'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
                        'http://data.vlaanderen.be/ns/besluit#gebeurtNa');
 
-  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBvapP, data.trs);
-  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
-                                 ['http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-                                  'http://www.w3.org/ns/prov#wasDerivedFrom',
-                                  'http://mu.semte.ch/vocabularies/core/uuid']);
-
   await persistExtractedData(data.trs, data.poi);
 };
 
@@ -91,16 +78,6 @@ async function insertZitting(triples, resourceToPublish){
   let data = getZittingResource(triples);
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
-
-  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Zitting',
-                                 ['http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-                                  'http://www.w3.org/ns/prov#wasDerivedFrom',
-                                  'http://mu.semte.ch/vocabularies/core/uuid',
-                                  //The following relations are managed by other parts of the pipeline.
-                                  'http://data.vlaanderen.be/ns/besluit#behandelt',
-                                  'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap',
-                                  'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit'
-                                 ]);
 
   await persistExtractedData(data.trs, data.poi);
 };
@@ -121,12 +98,6 @@ async function insertAgendaPunten(triples, resourceToPublish){
   linkToPublishedResource(data.trs, resourceToPublish.resource);
   data.trs = postProcess(data.trs);
   data.trs = orderGebeurtNa(data.trs);
-
-  await cleanupDeltaRelationsToZitting(triples.find(isAZitting), linkBP, data.trs);
-  await batchCleanupBeforeUpdate(data.trs, 'http://data.vlaanderen.be/ns/besluit#Agendapunt',
-                                 ['http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-                                  'http://www.w3.org/ns/prov#wasDerivedFrom',
-                                  'http://mu.semte.ch/vocabularies/core/uuid']);
 
   await persistExtractedData(data.trs, data.poi);
 };
@@ -151,10 +122,6 @@ async function insertNotulen(triples, resourceToPublish){
               { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
             ];
 
-  await batchCleanupBeforeUpdate(trs, 'http://mu.semte.ch/vocabularies/ext/Notulen',
-                                 [ 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-                                   'http://www.w3.org/ns/prov#wasDerivedFrom',
-                                   'http://mu.semte.ch/vocabularies/core/uuid']);
   await persistExtractedData(trs, poi);
 }
 
