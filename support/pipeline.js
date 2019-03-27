@@ -23,6 +23,7 @@ async function startPipeline(resourceToPublish){
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
   await insertBesluiten(triples, resourceToPublish);
+  await insertUittreksel(triples, resourceToPublish);
   await insertBesluitenlijst(triples, resourceToPublish);
   await insertNotulen(triples, resourceToPublish);
 };
@@ -66,26 +67,35 @@ async function insertBesluitenlijst(triples, resourceToPublish){
   await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten]);
 }
 
-async function insertBvap(triples, resourceToPublish){
-  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
+/**
+ * Extracts uittreksel from triples and saves them.
+ *
+ *  - Creates a uittreksel resource and links the bvaps to this newly created resource
+ *  - Uittreksel is attached to zitting.
+ *  - The besluiten are extracted and linked to the besluiten too.
+ */
+async function insertUittreksel(triples, resourceToPublish){
+  if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BEHANDELING))){
     return;
   }
 
-  //we really need it to be uri here
-  let trs = triples.filter(t =>
-                           (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
-                           isURI(t.object));
-  let linkBvapP = "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap";
-  let data = getBvap(trs);
+  let uittreksel = {subject: `http://mu.semte.ch/vocabularies/ext/uittreksels/${uuid()}`,
+                    predicate: 'a',
+                    object: 'http://mu.semte.ch/vocabularies/ext/Uittreksel'};
+  let uittrekselTrps = linkToZitting([uittreksel], triples, 'http://mu.semte.ch/vocabularies/ext/uittreksel');
+  uittrekselTrps = linkToPublishedResource(uittrekselTrps, resourceToPublish.resource);
 
-  linkToZitting(data.trs, triples, linkBvapP);
-  linkToPublishedResource(data.trs, resourceToPublish.resource);
-  data.trs = postProcess(data.trs);
-  data.trs = orderGebeurtNa(data.trs,
-                       'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
-                       'http://data.vlaanderen.be/ns/besluit#gebeurtNa');
+  //TODO: check whether adding order makes sense here...
+  let bvaps = getBvap(triples);
+  bvaps = postProcess(bvaps);
+  bvaps = linkToContainerResource(bvaps, uittreksel.subject, 'http://mu.semte.ch/vocabularies/ext/uittrekselBvap');
 
-  await persistExtractedData(data.trs, data.poi);
+
+  let besluiten = getBesluiten(triples);
+  besluiten = postProcess(besluiten);
+
+  await persistExtractedData([...uittrekselTrps, ...bvaps, ...besluiten]);
+
 };
 
 async function insertZitting(triples, resourceToPublish){

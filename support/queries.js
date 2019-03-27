@@ -7,6 +7,7 @@ const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-pu
 const SUCCESS_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success";
 
 const IS_PUBLISHED_AGENDA = "http://mu.semte.ch/vocabularies/ext/publishesAgenda";
+const IS_PUBLISHED_BEHANDELING = "http://mu.semte.ch/vocabularies/ext/publishesBehandeling";
 const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst";
 const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
 
@@ -323,6 +324,7 @@ export { getUnprocessedPublishedResources,
          FAILED_STATUS,
          SUCCESS_STATUS,
          IS_PUBLISHED_AGENDA,
+         IS_PUBLISHED_BEHANDELING,
          IS_PUBLISHED_BESLUITENLIJST,
          IS_PUBLISHED_NOTULEN
        }
