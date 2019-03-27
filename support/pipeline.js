@@ -23,35 +23,47 @@ async function startPipeline(resourceToPublish){
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
   await insertBesluiten(triples, resourceToPublish);
+  await insertBesluitenlijst(triples, resourceToPublish);
   await insertNotulen(triples, resourceToPublish);
 };
 
 /**
- * Extracts besluiten from triples and saves them.
- * What is does
- * ------------
- * 1. checks if published resource is a besluitenlijst
- * 2. extracts all ?p ?o (the ones we want) from the besluiten
- * 3. links all besluiten to zitting.
- * 4. links also besluiten to published resource
- * 5. some postprocessing
- * 6. cleaning obsolete deltas. E.g a snippet removes some besluiten. We want it (for now) reflected in DB
- * 7. cleans the triples which need update values
- * 8. saves it
+ * Extracts besluitenlijst from triples and saves them.
  *
- * Alls the insert* functions have roughly the same structure. Won't document them here.
+ *  - Creates a besluitenlijst resource and links the besluiten to this newly created resource
+ *  - Besluitenlijst is attached to zitting.
+ *  - The behandeling van agendapunten are extracted and linked to the besluiten too.
+ *  - bvaps are provided with order index
  */
-async function insertBesluiten(triples, resourceToPublish){
+async function insertBesluitenlijst(triples, resourceToPublish){
+
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))){
     return;
   }
-  let data = getBesluiten(triples);
-  let linkBesP = "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit";
-  linkToZitting(data.trs, triples, linkBesP);
-  linkToPublishedResource(data.trs, resourceToPublish.resource);
-  data.trs = postProcess(data.trs);
 
-  await persistExtractedData(data.trs, data.poi);
+  let besluitenlijst = {subject: `http://mu.semte.ch/vocabularies/ext/besluitenlijsten/${uuid()}`,
+                        predicate: 'a',
+                        object: 'http://mu.semte.ch/vocabularies/ext/Besluitenlijst'};
+  let besluitenlijstTrps = linkToZitting([besluitenlijst], triples, 'http://mu.semte.ch/vocabularies/ext/besluitenlijst');
+  besluitenlijstTrps = linkToPublishedResource(besluitenlijstTrps, resourceToPublish.resource);
+
+  //Extract bvap
+  //Postprocessing: make sure uri's are provided to reorder them
+  let trs = triples.filter(t =>
+                           (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#gebeurtNa') ||
+                           isURI(t.object));
+
+  let bvaps = getBvap(trs);
+  bvaps = postProcess(bvaps);
+  bvaps = orderGebeurtNa(bvaps,
+                        'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt',
+                        'http://data.vlaanderen.be/ns/besluit#gebeurtNa');
+
+  let besluiten = getBesluiten(triples);
+  besluiten = linkToContainerResource(besluiten, besluitenlijst.subject, 'http://mu.semte.ch/vocabularies/ext/besluitenlijstBesluit');
+  besluiten = postProcess(besluiten);
+
+  await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten]);
 }
 
 async function insertBvap(triples, resourceToPublish){
@@ -201,6 +213,14 @@ function linkToZitting(preparedTriples, origTriples, predicate){
   let resources = preparedTriples.filter(t => t.predicate == 'a');
   resources.forEach(t => {
     preparedTriples.push({subject: zitting.subject, predicate: predicate, object: t.subject});
+  });
+  return preparedTriples;
+}
+
+function linkToContainerResource(preparedTriples, containerResource, predicate){
+  let resources = preparedTriples.filter(t => t.predicate == 'a');
+  resources.forEach(t => {
+    preparedTriples.push({subject: containerResource, predicate: predicate, object: t.subject});
   });
   return preparedTriples;
 }
