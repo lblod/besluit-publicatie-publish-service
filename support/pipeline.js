@@ -277,75 +277,74 @@ async function hashStr(message){
   return crypto.createHmac('sha256', message).digest('hex');
 }
 
-/*
- * Weird intermediate function which does probably too much. Anyway it came handy for here right now.
- * Extracts the triples we want, and also provides an escapefunction mapping per S and O for serializing to db
- */
 function getBesluiten(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
 
   //We are conservative in what to persist; we respect applicatieprofiel
-  let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#description', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#title_short', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#motivering', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#date_publication', escapeObjectF: sparqlEscapeDate },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#realizes', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasGeneratedBy', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#title', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#language', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#description', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#has_part', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit', escapeObjectF: sparqlEscapeUri }
-            ];
+  let poi = [
+    'a',
+    'http://data.europa.eu/eli/ontology#description',
+    'http://data.europa.eu/eli/ontology#title_short',
+    'http://data.vlaanderen.be/ns/besluit#motivering',
+    'http://data.europa.eu/eli/ontology#date_publication',
+    'http://data.europa.eu/eli/ontology#realizes',
+    'http://www.w3.org/ns/prov#wasGeneratedBy',
+    'http://data.europa.eu/eli/ontology#title',
+    'http://data.europa.eu/eli/ontology#language',
+    'http://data.europa.eu/eli/ontology#description',
+    'http://data.europa.eu/eli/ontology#has_part',
+    'http://www.w3.org/ns/prov#value',
+    'http://www.w3.org/ns/prov#wasDerivedFrom',
+    'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit',
+  ];
 
-  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-  return { trs, poi };
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
+  return trs;
 }
 
 function getBvap(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt');
 
   //We are conservative in what to persist; we respect applicatieprofiel
-  let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#gebeurtNa', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#generated', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftAanwezige', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/subject', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftSecretaris', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftStemming', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#openbaar', escapeObjectF: sparqlEscapeBool },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://schema.org/position', escapeObjectF: sparqlEscapeInt },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap', escapeObjectF: sparqlEscapeUri }
-            ];
+  let poi = [
+    'a',
+    'http://data.vlaanderen.be/ns/besluit#gebeurtNa',
+    'http://www.w3.org/ns/prov#generated',
+    'http://data.vlaanderen.be/ns/besluit#heeftAanwezige',
+    'http://purl.org/dc/terms/subject',
+    'http://data.vlaanderen.be/ns/besluit#heeftSecretaris',
+    'http://data.vlaanderen.be/ns/besluit#heeftStemming',
+    'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter',
+    'http://data.vlaanderen.be/ns/besluit#openbaar',
+    'http://schema.org/position',
+    'http://www.w3.org/ns/prov#wasDerivedFrom',
+    'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap',
+  ];
 
-  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-  return { trs, poi };
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
+  return trs;
 }
 
 function getAgendaPunten(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Agendapunt');
 
   //We are conservative in what to persist; we respect applicatieprofiel
-  let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/description', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#geplandOpenbaar', escapeObjectF: sparqlEscapeBool },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftOntwerpbesluit', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/references', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://purl.org/dc/terms/title', escapeObjectF: sparqlEscapeString },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#Agendapunt.type', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://schema.org/position', escapeObjectF: sparqlEscapeInt },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#behandelt', escapeObjectF: sparqlEscapeUri }
-            ];
+  let poi = [
+    'a',
+    'http://data.vlaanderen.be/ns/besluit#aangebrachtNa',
+    'http://purl.org/dc/terms/description',
+    'http://data.vlaanderen.be/ns/besluit#geplandOpenbaar',
+    'http://data.vlaanderen.be/ns/besluit#heeftOntwerpbesluit',
+    'http://purl.org/dc/terms/references',
+    'http://purl.org/dc/terms/title',
+    'http://data.vlaanderen.be/ns/besluit#Agendapunt.type',
+    'http://schema.org/position',
+    'http://www.w3.org/ns/prov#wasDerivedFrom',
+    'http://data.vlaanderen.be/ns/besluit#behandelt',
+  ];
 
-  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-  return { trs, poi };
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
+  return trs;
 };
 
 
@@ -353,23 +352,24 @@ function getZittingResource(triples){
   let trs = triples.filter(isAZitting);
 
   //We are conservative in what to persist; we respect applicatieprofiel
-  let poi = [{ escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#geplandeStart', escapeObjectF: sparqlEscapeDateTime},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#startedAtTime', escapeObjectF: sparqlEscapeDateTime},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#isGehoudenDoor', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#behandelt', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#endedAtTime', escapeObjectF: sparqlEscapeDateTime},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftAanwezigeBijStart', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftNotulen', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftSecretaris', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftZittingsverslag', escapeObjectF: sparqlEscapeUri},
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#atLocation', escapeObjectF: sparqlEscapeUri },
-             { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
-            ];
+  let poi = [
+    'a',
+    'http://data.vlaanderen.be/ns/besluit#geplandeStart',
+    'http://www.w3.org/ns/prov#startedAtTime',
+    'http://data.vlaanderen.be/ns/besluit#isGehoudenDoor',
+    'http://data.vlaanderen.be/ns/besluit#behandelt',
+    'http://www.w3.org/ns/prov#endedAtTime',
+    'http://data.vlaanderen.be/ns/besluit#heeftAanwezigeBijStart',
+    'http://data.vlaanderen.be/ns/besluit#heeftNotulen',
+    'http://data.vlaanderen.be/ns/besluit#heeftSecretaris',
+    'http://data.vlaanderen.be/ns/besluit#heeftVoorzitter',
+    'http://data.vlaanderen.be/ns/besluit#heeftZittingsverslag',
+    'http://www.w3.org/ns/prov#atLocation',
+    'http://www.w3.org/ns/prov#wasDerivedFrom',
+  ];
 
-  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p.predicate == t.predicate));
-  return { trs, poi };
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
+  return trs;
 };
 
 export { startPipeline }
