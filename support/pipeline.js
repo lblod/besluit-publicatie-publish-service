@@ -23,6 +23,7 @@ async function startPipeline(resourceToPublish){
   await insertAgendaPunten(triples, resourceToPublish);
   await insertBvap(triples, resourceToPublish);
   await insertBesluiten(triples, resourceToPublish);
+  await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish);
   await insertBesluitenlijst(triples, resourceToPublish);
   await insertNotulen(triples, resourceToPublish);
@@ -106,24 +107,36 @@ async function insertZitting(triples, resourceToPublish){
   await persistExtractedData(data.trs, data.poi);
 };
 
-async function insertAgendaPunten(triples, resourceToPublish){
+/**
+ * Extracts agenda from triples and saves them.
+ *
+ *  - Creates a agenda resource and links the agendapunten to this newly created resource
+ *  - Agenda and agendapunten is attached to zitting.
+ *  - Order is provided to agendapunten
+ */
+async function insertAgenda(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_AGENDA))){
     return;
   }
+  let agenda = {subject: `http://mu.semte.ch/vocabularies/ext/agendas/${uuid()}`,
+                predicate: 'a',
+                object: 'http://mu.semte.ch/vocabularies/ext/Agenda'};
+  let agendaTrps = linkToZitting([agenda], triples, 'http://mu.semte.ch/vocabularies/ext/agenda');
+  agendaTrps = linkToPublishedResource(agendaTrps, resourceToPublish.resource);
+
 
   //keep on preprocessing. We really need this predicate to point to a uri
   let trs = triples.filter(t =>
                            (t.predicate !== 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa') ||
                            isURI(t.object));
 
-  let data = getAgendaPunten(trs);
-  let linkBP = "http://data.vlaanderen.be/ns/besluit#behandelt";
-  linkToZitting(data.trs, triples, linkBP);
-  linkToPublishedResource(data.trs, resourceToPublish.resource);
-  data.trs = postProcess(data.trs);
-  data.trs = orderGebeurtNa(data.trs);
+  let agendapunten = getAgendaPunten(trs);
+  agendapunten = linkToZitting(agendapunten, triples, "http://data.vlaanderen.be/ns/besluit#behandelt");
+  agendapunten = postProcess(agendapunten);
+  agendapunten = orderGebeurtNa(agendapunten);
+  agendapunten = linkToContainerResource(agendapunten, agenda.subject, 'http://mu.semte.ch/vocabularies/ext/agendaAgendapunt');
 
-  await persistExtractedData(data.trs, data.poi);
+  await persistExtractedData([...agendaTrps, ...agendapunten]);
 };
 
 async function insertNotulen(triples, resourceToPublish){
