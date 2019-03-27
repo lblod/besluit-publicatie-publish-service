@@ -1,8 +1,10 @@
 import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
-import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource, IS_PUBLISHED_AGENDA, IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
-import {uuid, sparqlEscapeUri, sparqlEscapeString, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
+import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource,
+         IS_PUBLISHED_AGENDA, IS_PUBLISHED_BEHANDELING,
+         IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
+import { uuid } from 'mu';
 import crypto from 'crypto';
 
 /**
@@ -10,9 +12,8 @@ import crypto from 'crypto';
  * Assumes
  * ------
  *  - All Rdfa snippets contain a Zitting
- *  - Latest published snippet, is truth. E.g. a spoedeisended agenda will overrule data from aanvullende agenda
-*   - All extracted resources, are linked to a Zitting.
-      This is an exstension on the AP. Because users can publish besluitenlijst before publising agenda. The same for behandeling van agendapunt
+ *  - All extracted resources, are linked to a Zitting.
+ *  - We extend AP with agenda, uittreksel and besluiten lijst. This eases management of extracted data.
  **/
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
@@ -20,9 +21,6 @@ async function startPipeline(resourceToPublish){
   triples = preProcess(triples);
 
   await insertZitting(triples, resourceToPublish);
-  await insertAgendaPunten(triples, resourceToPublish);
-  await insertBvap(triples, resourceToPublish);
-  await insertBesluiten(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish);
   await insertBesluitenlijst(triples, resourceToPublish);
@@ -101,10 +99,10 @@ async function insertUittreksel(triples, resourceToPublish){
 
 async function insertZitting(triples, resourceToPublish){
   let data = getZittingResource(triples);
-  linkToPublishedResource(data.trs, resourceToPublish.resource);
-  data.trs = postProcess(data.trs);
+  linkToPublishedResource(data, resourceToPublish.resource);
+  data = postProcess(data);
 
-  await persistExtractedData(data.trs, data.poi);
+  await persistExtractedData(data);
 };
 
 /**
@@ -143,23 +141,19 @@ async function insertNotulen(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_NOTULEN))){
     return;
   }
+
   //Make stable uri.
   let zitting = triples.find(isAZitting);
   let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
+
   trs.push({subject, predicate: "a", object: `http://mu.semte.ch/vocabularies/ext/Notulen`});
   trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object: resourceToPublish.rdfaSnippet});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
 
-  let poi = [ { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
-              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#heeftNotulen', escapeObjectF: sparqlEscapeUri },
-              { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri }
-            ];
-
-  await persistExtractedData(trs, poi);
+  await persistExtractedData(trs);
 }
 
 /*************************************************************
