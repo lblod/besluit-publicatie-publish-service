@@ -294,17 +294,20 @@ const predicateDataTypeEscapeMap = function ( predicate ){
 
   let besluitenlijst = [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-    {escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitenlijstBesluit', escapeObjectF: sparqlEscapeUri}
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitenlijstBesluit', escapeObjectF: sparqlEscapeUri},
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
   ];
 
   let uittreksel = [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/uittrekselBvap', escapeObjectF: sparqlEscapeUri },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
   ];
 
   let agenda =  [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/agendaAgendapunt', escapeObjectF: sparqlEscapeUri },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
   ];
 
   let allEscapeFunctions = [...besluit, ...bvap, ...agendapunten, ...zitting, ...notulen, ...besluitenlijst, ...uittreksel, ...agenda];
