@@ -46,6 +46,9 @@ async function insertBesluitenlijst(triples, resourceToPublish){
                         object: 'http://mu.semte.ch/vocabularies/ext/Besluitenlijst'};
   let besluitenlijstTrps = linkToZitting([besluitenlijst], triples, 'http://mu.semte.ch/vocabularies/ext/besluitenlijst');
   besluitenlijstTrps = linkToPublishedResource(besluitenlijstTrps, resourceToPublish.resource);
+  besluitenlijstTrps.push({subject: besluitenlijst.subject,
+                 predicate: 'http://www.w3.org/ns/prov#value',
+                 object: resourceToPublish.rdfaSnippet});
 
   //Extract bvap
   //Postprocessing: make sure uri's are provided to reorder them
@@ -83,6 +86,9 @@ async function insertUittreksel(triples, resourceToPublish){
                     object: 'http://mu.semte.ch/vocabularies/ext/Uittreksel'};
   let uittrekselTrps = linkToZitting([uittreksel], triples, 'http://mu.semte.ch/vocabularies/ext/uittreksel');
   uittrekselTrps = linkToPublishedResource(uittrekselTrps, resourceToPublish.resource);
+  uittrekselTrps.push({subject: uittreksel.subject,
+                   predicate: 'http://www.w3.org/ns/prov#value',
+                   object: resourceToPublish.rdfaSnippet});
 
   //TODO: check whether adding order makes sense here...
   let bvaps = getBvap(triples);
@@ -119,7 +125,12 @@ async function insertAgenda(triples, resourceToPublish){
   let agenda = {subject: `http://mu.semte.ch/vocabularies/ext/agendas/${uuid()}`,
                 predicate: 'a',
                 object: 'http://mu.semte.ch/vocabularies/ext/Agenda'};
+
   let agendaTrps = linkToZitting([agenda], triples, 'http://mu.semte.ch/vocabularies/ext/agenda');
+  agendaTrps.push({subject: agenda.subject,
+                   predicate: 'http://www.w3.org/ns/prov#value',
+                   object: resourceToPublish.rdfaSnippet});
+
   agendaTrps = linkToPublishedResource(agendaTrps, resourceToPublish.resource);
 
 
