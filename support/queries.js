@@ -19,16 +19,37 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
      SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?status ?created ?numberOfRetries {
        GRAPH ?graph {
          ?resource a sign:PublishedResource;
-                   <http://purl.org/dc/terms/created> ?created;
-                   <http://mu.semte.ch/vocabularies/ext/signing/text> ?rdfaSnippet.
+                   <http://purl.org/dc/terms/created> ?created.
+
+         OPTIONAL{
+            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+         }
 
          OPTIONAL{
             ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
          }
 
          OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+            ?resource <http://mu.semte.ch/vocabularies/ext/publishesAgenda> ?versionedAgenda.
          }
+
+         OPTIONAL{
+            ?resource <http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst> ?versionedBesluitenLijst.
+         }
+
+         OPTIONAL{
+            ?resource <http://mu.semte.ch/vocabularies/ext/publishesNotulen> ?versionedNotulen.
+         }
+
+         BIND(coalesce(?versionedAgenda, ?versionedBesluitenLijst) as ?tmpVersionedDocument).
+         BIND(coalesce(?tmpVersionedDocument, ?versionedNotulen) as ?versionedDocument).
+
+         ?versionedDocument <http://mu.semte.ch/vocabularies/ext/content> ?content.
+         OPTIONAL{
+            ?versionedDocument <http://mu.semte.ch/vocabularies/ext/publicContent> ?publicContent.
+         }
+
+         BIND(coalesce(?publicContent, ?content) as ?rdfaSnippet).
 
         FILTER (
           (!BOUND(?status)
