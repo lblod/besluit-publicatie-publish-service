@@ -29,29 +29,16 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
             ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
          }
 
-         OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/publishesAgenda> ?versionedAgenda.
-         }
-
-         OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst> ?versionedBesluitenLijst.
-         }
-
-         OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/publishesNotulen> ?versionedNotulen.
-         }
-
-         BIND(coalesce(?versionedAgenda, ?versionedBesluitenLijst) as ?tmpVersionedDocument).
-         BIND(coalesce(?tmpVersionedDocument, ?versionedNotulen) as ?versionedDocument).
-
+         ?resource <http://purl.org/dc/terms/subject> ?versionedDocument.
          ?versionedDocument <http://mu.semte.ch/vocabularies/ext/content> ?content.
+
          OPTIONAL{
             ?versionedDocument <http://mu.semte.ch/vocabularies/ext/publicContent> ?publicContent.
          }
 
          BIND(coalesce(?publicContent, ?content) as ?rdfaSnippet).
 
-        FILTER (
+         FILTER (
           (!BOUND(?status)
 
            ||
