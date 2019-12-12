@@ -22,5 +22,4 @@ Takes a published resource as input, tries to extract data from it. Removes old 
 Assummes all snippets contain a zitting and bestuursorgaan.
 
 ## TODOS
-* ! The service does not work with SEAS. (frequenst socket hang up error.) Needs investigation. Now map on virtuoso !
 *  some general cleanup/documenting
