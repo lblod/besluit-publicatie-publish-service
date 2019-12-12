@@ -192,8 +192,14 @@ function applyEscapeFunctionData(triples){
   return triples.map(t => {
     let p =  predicateDataTypeEscapeMap( t.predicate );
     let escapedPredicate = 'a' == p.predicate ? 'a' : sparqlEscapeUri(t.predicate);
-    return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
-  });
+    try {
+      return {subject: p.escapeSubjectF(t.subject), predicate: escapedPredicate, object: p.escapeObjectF(t.object) };
+    }
+    catch(e) {
+      console.warn(`failed to convert triple ${t.subject} ${t.predicate} ${JSON.stringify(t.object)}`);
+      throw e;
+    }
+  }).filter((e) => e);
 }
 
 function isAResource(triple){
