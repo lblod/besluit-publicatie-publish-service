@@ -6,6 +6,7 @@ import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUp
          IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
 import { uuid } from 'mu';
 import crypto from 'crypto';
+import { JSDOM } from 'jsdom';
 
 /**
  * Main entry point for extraction of data.
@@ -17,14 +18,15 @@ import crypto from 'crypto';
  **/
 async function startPipeline(resourceToPublish){
   let doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
-  let triples = flatTriples(doc.getTopDomNode()); //let's not make an assumption about how the document is structured. But, might explode memory?
+  let contexts = analyse( doc.getTopDomNode() );
+  let triples = flatTriples(contexts.map((c) => c.context));
   triples = preProcess(triples);
 
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish);
   await insertBesluitenlijst(triples, resourceToPublish);
-  await insertNotulen(triples, resourceToPublish);
+  await insertNotulen(triples, resourceToPublish, doc, contexts);
 };
 
 /**
@@ -148,7 +150,7 @@ async function insertAgenda(triples, resourceToPublish){
   await persistExtractedData([...agendaTrps, ...agendapunten]);
 };
 
-async function insertNotulen(triples, resourceToPublish){
+async function insertNotulen(triples, resourceToPublish, doc, contexts){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_NOTULEN))){
     return;
   }
@@ -157,9 +159,8 @@ async function insertNotulen(triples, resourceToPublish){
   let zitting = triples.find(isAZitting);
   let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
-
   trs.push({subject, predicate: "a", object: `http://mu.semte.ch/vocabularies/ext/Notulen`});
-  trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object: resourceToPublish.rdfaSnippet});
+  trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object:   enrichNotulen(triples, doc, contexts)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
@@ -298,8 +299,7 @@ function postProcess(triples){
 /*
  * flatten output from contextscanner
  */
-function flatTriples(node){
-  let contexts = analyse( node ).map((c) => c.context);
+function flatTriples(contexts){
   return contexts.reduce((acc, e) => { return [ ...acc, ...e]; }, []);
 }
 
@@ -387,6 +387,37 @@ function getAgendaPunten(triples){
   return trs;
 };
 
+function enrichNotulen(triples, dom, contexts) {
+  const besluitIRIs = triples.filter((t) => t.object === 'http://data.vlaanderen.be/ns/besluit#Besluit').map((t) => t.subject);
+  for (let besluitIRI of (new Set(besluitIRIs))) {
+    const besluitDOM = findNodeForResource(contexts, besluitIRI);
+    enrichBesluit(besluitDOM, besluitIRI, triples);
+  }
+  return contexts[0].semanticNode.domNode.outerHTML;
+}
+
+function enrichBesluit(dom, besluitIRI, triples) {
+  const { document } = (new JSDOM(``)).window;
+  const behandeling = triples.find((t) => t.object === besluitIRI && t.predicate === "http://www.w3.org/ns/prov#generated");
+  if (behandeling) {
+    const generatedLink = document.createElement('link');
+    generatedLink.setAttribute('property', 'prov:wasGeneratedBy');
+    generatedLink.setAttribute('resource', behandeling.subject);
+    dom.append(generatedLink);
+  }
+  const pubDate = document.createElement('link');
+  pubDate.setAttribute('property','http://data.europa.eu/eli/ontology#date_publication');
+  pubDate.setAttribute('datatype','xsd:date');
+  pubDate.setAttribute('content',new Date().toISOString().substring(0, 10));
+  dom.append(pubDate);
+  const gehoudenDoor = triples.find((t) => t.predicate === "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor");
+  if (gehoudenDoor) {
+    const generatedLink = document.createElement('link');
+    generatedLink.setAttribute('property', 'http://data.vlaanderen.be/ns/besluit#isGehoudenDoor');
+    generatedLink.setAttribute('resource', gehoudenDoor.object);
+    dom.append(generatedLink);
+  }
+}
 
 function getZittingResource(triples){
   let trs = triples.filter(isAZitting);
@@ -412,4 +443,19 @@ function getZittingResource(triples){
   return trs;
 };
 
+/**
+ * returns the first domNode where resource is the subject */
+function findNodeForResource(orderedContexts, resource) {
+  for( var idx = 0; idx < orderedContexts.length; idx++ ) {
+    let ctxObj = orderedContexts[idx];
+    for( var cdx = 0; cdx < ctxObj.context.length; cdx++ ) {
+      let triple = ctxObj.context[cdx];
+      if( triple.object === resource)
+        return ctxObj.semanticNode.domNode;
+    }
+  }
+  console.log(`Could not find resource ${resource}`);
+  return null;
+
+}
 export { startPipeline }
