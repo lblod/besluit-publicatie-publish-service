@@ -17,9 +17,29 @@ besluit-publicatie:
       - virtuoso:database
 ```
 
+## Example delta notifier config
+```
+export default [
+  {
+    match: {
+      // form of element is {subject,predicate,object}
+      object: { type: "uri", value: "http://mu.semte.ch/vocabularies/ext/signing/PublishedResource" }
+    },
+    callback: {
+      url: "http://besluit-publicatie/publish-tasks", method: "POST"
+    },
+    options: {
+      resourceFormat: "v0.0.1",
+      gracePeriod: 1000,
+      ignoreFromSelf: true
+    }
+  }
+]
+```
 ## Inner workings
 Takes a published resource as input, tries to extract data from it. Removes old data.
 Assummes all snippets contain a zitting and bestuursorgaan.
+
 
 ## TODOS
 *  some general cleanup/documenting
