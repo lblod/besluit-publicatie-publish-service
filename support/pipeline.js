@@ -413,7 +413,7 @@ function enrichBesluit(dom, besluitIRI, triples) {
   const gehoudenDoor = triples.find((t) => t.predicate === "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor");
   if (gehoudenDoor) {
     const generatedLink = document.createElement('link');
-    generatedLink.setAttribute('property', 'http://data.vlaanderen.be/ns/besluit#isGehoudenDoor');
+    generatedLink.setAttribute('property', 'http://data.europa.eu/eli/ontology#passed_by');
     generatedLink.setAttribute('resource', gehoudenDoor.object);
     dom.append(generatedLink);
   }
