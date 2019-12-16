@@ -1,6 +1,6 @@
-import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dist/dom-helpers';
+import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dom-helpers';
 import rdfaDomDocument from './rdfa-dom-document';
-import { analyse, resolvePrefixes } from '@lblod/marawa/dist/rdfa-context-scanner';
+import { analyse, resolvePrefixes } from '@lblod/marawa/rdfa-context-scanner';
 import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource,
          IS_PUBLISHED_AGENDA, IS_PUBLISHED_BEHANDELING,
          IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
