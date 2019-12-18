@@ -50,7 +50,12 @@ async function insertBesluitenlijst(triples, resourceToPublish){
   besluitenlijstTrps = linkToPublishedResource(besluitenlijstTrps, resourceToPublish.resource);
   besluitenlijstTrps.push({subject: besluitenlijst.subject,
                  predicate: 'http://www.w3.org/ns/prov#value',
-                 object: resourceToPublish.rdfaSnippet});
+                           object: resourceToPublish.rdfaSnippet});
+  besluitenlijstTrps.push({
+    subject: besluitenlijst.subject,
+    predicate: 'http://data.europa.eu/eli/ontology#date_publication',
+    object: new Date().toISOString().substring(0, 10)
+  });
 
   //Extract bvap
   //Postprocessing: make sure uri's are provided to reorder them
