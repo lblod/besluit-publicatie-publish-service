@@ -43,7 +43,7 @@ async function insertBesluitenlijst(triples, resourceToPublish){
     return;
   }
 
-  let besluitenlijst = {subject: `http://mu.semte.ch/vocabularies/ext/besluitenlijsten/${uuid()}`,
+  let besluitenlijst = {subject: `http://data.lblod.info/vocabularies/lblod/besluitenlijsten/${uuid()}`,
                         predicate: 'a',
                         object: 'http://mu.semte.ch/vocabularies/ext/Besluitenlijst'};
   let besluitenlijstTrps = linkToZitting([besluitenlijst], triples, 'http://mu.semte.ch/vocabularies/ext/besluitenlijst');
@@ -88,7 +88,7 @@ async function insertUittreksel(triples, resourceToPublish){
     return;
   }
 
-  let uittreksel = {subject: `http://mu.semte.ch/vocabularies/ext/uittreksels/${uuid()}`,
+  let uittreksel = {subject: `http://data.lblod.info/vocabularies/lblod/uittreksels/${uuid()}`,
                     predicate: 'a',
                     object: 'http://mu.semte.ch/vocabularies/ext/Uittreksel'};
   let uittrekselTrps = linkToZitting([uittreksel], triples, 'http://mu.semte.ch/vocabularies/ext/uittreksel');
@@ -129,7 +129,7 @@ async function insertAgenda(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_AGENDA))){
     return;
   }
-  let agenda = {subject: `http://mu.semte.ch/vocabularies/ext/agendas/${uuid()}`,
+  let agenda = {subject: `http://data.lblod.info/vocabularies/lblod/agendas/${uuid()}`,
                 predicate: 'a',
                 object: 'http://mu.semte.ch/vocabularies/ext/Agenda'};
 
