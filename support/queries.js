@@ -1,10 +1,6 @@
 import mu from 'mu';
-import {uuid, sparqlEscapeUri, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
+import {uuid, sparqlEscapeString, sparqlEscapeUri, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
-
-function sparqlEscapeString( value ){
-  return '"""' + value.replace(/[\\"']/g, function(match) { return '\\' + match; }) + '"""';
-};
 
 const PENDING_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending";
 const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed";
