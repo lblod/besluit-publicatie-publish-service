@@ -43,7 +43,7 @@ async function insertBesluitenlijst(triples, resourceToPublish){
     return;
   }
 
-  let besluitenlijst = {subject: `http://data.lblod.info/vocabularies/lblod/besluitenlijsten/${uuid()}`,
+  let besluitenlijst = {subject: `http://data.lblod.info/id/lblod/besluitenlijsten/${uuid()}`,
                         predicate: 'a',
                         object: 'http://mu.semte.ch/vocabularies/ext/Besluitenlijst'};
   let besluitenlijstTrps = linkToZitting([besluitenlijst], triples, 'http://mu.semte.ch/vocabularies/ext/besluitenlijst');
@@ -88,7 +88,7 @@ async function insertUittreksel(triples, resourceToPublish){
     return;
   }
 
-  let uittreksel = {subject: `http://data.lblod.info/vocabularies/lblod/uittreksels/${uuid()}`,
+  let uittreksel = {subject: `http://data.lblod.info/id/lblod/uittreksels/${uuid()}`,
                     predicate: 'a',
                     object: 'http://mu.semte.ch/vocabularies/ext/Uittreksel'};
   let uittrekselTrps = linkToZitting([uittreksel], triples, 'http://mu.semte.ch/vocabularies/ext/uittreksel');
@@ -129,7 +129,7 @@ async function insertAgenda(triples, resourceToPublish){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_AGENDA))){
     return;
   }
-  let agenda = {subject: `http://data.lblod.info/vocabularies/lblod/agendas/${uuid()}`,
+  let agenda = {subject: `http://data.lblod.info/id/lblod/agendas/${uuid()}`,
                 predicate: 'a',
                 object: 'http://mu.semte.ch/vocabularies/ext/Agenda'};
 
@@ -162,7 +162,7 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts){
 
   //Make stable uri.
   let zitting = triples.find(isAZitting);
-  let subject = `http://data.lblod.info/vocabularies/lblod/notulen/${await hashStr(zitting.subject)}`;
+  let subject = `http://data.lblod.info/id/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
   trs.push({subject, predicate: "a", object: `http://mu.semte.ch/vocabularies/ext/Notulen`});
   trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object:   enrichNotulen(triples, doc, contexts)});
