@@ -471,7 +471,7 @@ function findNodeForResource(orderedContexts, resource) {
     let ctxObj = orderedContexts[idx];
     for( var cdx = 0; cdx < ctxObj.context.length; cdx++ ) {
       let triple = ctxObj.context[cdx];
-      if( triple.object === resource)
+      if( triple.subject === resource)
         return ctxObj.semanticNode.domNode;
     }
   }
