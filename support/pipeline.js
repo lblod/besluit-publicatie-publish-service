@@ -418,7 +418,6 @@ function enrichBesluit(dom, besluitIRI, triples) {
 
     const zittingTriple = triples.find((t) => t.object === 'http://data.vlaanderen.be/ns/besluit#Zitting'); // TODO: assumes one zitting!
     const agendapuntTriple = triples.find((t) => t.subject == behandeling.subject && t.predicate == "http://purl.org/dc/terms/subject" );
-    console.log(zittingTriple, agendapuntTriple);
     if (agendapuntTriple && zittingTriple) {
       const agendapuntToZitting = document.createElement('link');
       agendapuntToZitting.setAttribute('about', zittingTriple.subject);
