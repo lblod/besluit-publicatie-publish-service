@@ -415,6 +415,17 @@ function enrichBesluit(dom, besluitIRI, triples) {
     generatedLink.setAttribute('property', 'prov:wasGeneratedBy');
     generatedLink.setAttribute('resource', behandeling.subject);
     dom.append(generatedLink);
+
+    const zittingTriple = triples.find((t) => t.object === 'http://data.vlaanderen.be/ns/besluit#Zitting'); // TODO: assumes one zitting!
+    const agendapuntTriple = triples.find((t) => t.subject == behandeling.subject && t.predicate == "http://purl.org/dc/terms/subject" );
+    console.log(zittingTriple, agendapuntTriple);
+    if (agendapuntTriple && zittingTriple) {
+      const agendapuntToZitting = document.createElement('link');
+      agendapuntToZitting.setAttribute('about', zittingTriple.subject);
+      agendapuntToZitting.setAttribute('property', 'http://data.vlaanderen.be/ns/besluit#behandelt');
+      agendapuntToZitting.setAttribute('resource', agendapuntTriple.object);
+      dom.append(agendapuntToZitting);
+    }
   }
   const pubDate = document.createElement('link');
   pubDate.setAttribute('property','http://data.europa.eu/eli/ontology#date_publication');
