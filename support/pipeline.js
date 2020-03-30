@@ -24,7 +24,7 @@ async function startPipeline(resourceToPublish){
 
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
-  await insertUittreksel(triples, resourceToPublish);
+  await insertUittreksel(triples, resourceToPublish, doc, contexts);
   await insertBesluitenlijst(triples, resourceToPublish);
   await insertNotulen(triples, resourceToPublish, doc, contexts);
 };
@@ -83,7 +83,7 @@ async function insertBesluitenlijst(triples, resourceToPublish){
  *  - Uittreksel is attached to zitting.
  *  - The besluiten are extracted and linked to the besluiten too.
  */
-async function insertUittreksel(triples, resourceToPublish){
+async function insertUittreksel(triples, resourceToPublish, doc, contexts){
   if(!(await belongsToType(resourceToPublish, IS_PUBLISHED_BEHANDELING))){
     return;
   }
@@ -93,10 +93,16 @@ async function insertUittreksel(triples, resourceToPublish){
                     object: 'http://mu.semte.ch/vocabularies/ext/Uittreksel'};
   let uittrekselTrps = linkToZitting([uittreksel], triples, 'http://mu.semte.ch/vocabularies/ext/uittreksel');
   uittrekselTrps = linkToPublishedResource(uittrekselTrps, resourceToPublish.resource);
+  const besluitIRIs = triples.filter((t) => t.object === 'http://data.vlaanderen.be/ns/besluit#Besluit').map((t) => t.subject);
+  const dom = doc.getDom();
+  for (let besluitIRI of (new Set(besluitIRIs))) {
+    const besluitDOM = findNodeForResource(contexts, besluitIRI);
+    enrichBesluit(besluitDOM, besluitIRI, triples);
+  }
+  const newSnippet = doc.getTopDomNode().innerHTML;
   uittrekselTrps.push({subject: uittreksel.subject,
-                   predicate: 'http://www.w3.org/ns/prov#value',
-                   object: resourceToPublish.rdfaSnippet});
-
+                       predicate: 'http://www.w3.org/ns/prov#value',
+                       object: newSnippet});
   //TODO: check whether adding order makes sense here...
   let bvaps = getBvap(triples);
   bvaps = postProcess(bvaps);
