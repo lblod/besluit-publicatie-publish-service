@@ -171,7 +171,7 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts){
   let subject = `http://data.lblod.info/id/lblod/notulen/${await hashStr(zitting.subject)}`;
   let trs = [];
   trs.push({subject, predicate: "a", object: `http://mu.semte.ch/vocabularies/ext/Notulen`});
-  trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object:   enrichNotulen(triples, doc, contexts)});
+  trs.push({subject, predicate: 'http://www.w3.org/ns/prov#value', object:   enrichNotulen(subject,triples, doc, contexts)});
   linkToZitting(trs, triples, "http://data.vlaanderen.be/ns/besluit#heeftNotulen");
   linkToPublishedResource(trs, resourceToPublish.resource);
   trs = postProcess(trs);
@@ -398,13 +398,18 @@ function getAgendaPunten(triples){
   return trs;
 };
 
-function enrichNotulen(triples, dom, contexts) {
+function enrichNotulen(notulenUri, triples, dom, contexts) {
   const besluitIRIs = triples.filter((t) => t.object === 'http://data.vlaanderen.be/ns/besluit#Besluit').map((t) => t.subject);
   for (let besluitIRI of (new Set(besluitIRIs))) {
     const besluitDOM = findNodeForResource(contexts, besluitIRI);
     enrichBesluit(besluitDOM, besluitIRI, triples);
   }
-  return contexts[0].semanticNode.domNode.outerHTML;
+  const { document } = (new JSDOM(``)).window;
+  const notulenDiv = document.createElement('div');
+  notulenDiv.setAttribute('about', notulenUri);
+  notulenDiv.setAttribute('typeof', "foaf:Document https://data.vlaanderen.be/id/concept/BesluitDocumentType/8e791b27-7600-4577-b24e-c7c29e0eb773");
+  notulenDiv.append(contexts[0].semanticNode.domNode.outerHTML);
+  return notulenDiv.outerHTML;
 }
 
 function enrichBesluit(dom, besluitIRI, triples) {
@@ -471,8 +476,9 @@ function findNodeForResource(orderedContexts, resource) {
     let ctxObj = orderedContexts[idx];
     for( var cdx = 0; cdx < ctxObj.context.length; cdx++ ) {
       let triple = ctxObj.context[cdx];
-      if( triple.subject === resource)
+      if( triple.subject === resource) {
         return ctxObj.semanticNode.domNode;
+      }
     }
   }
   console.log(`Could not find resource ${resource}`);
