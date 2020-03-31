@@ -408,7 +408,7 @@ function enrichNotulen(notulenUri, triples, dom, contexts) {
   const notulenDiv = document.createElement('div');
   notulenDiv.setAttribute('about', notulenUri);
   notulenDiv.setAttribute('typeof', "foaf:Document https://data.vlaanderen.be/id/concept/BesluitDocumentType/8e791b27-7600-4577-b24e-c7c29e0eb773");
-  notulenDiv.append(contexts[0].semanticNode.domNode);
+  notulenDiv.append(contexts[0].semanticNode.domNode.outerHTML);
   return notulenDiv.outerHTML;
 }
 
