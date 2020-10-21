@@ -28,15 +28,11 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
          OPTIONAL{
             ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
          }
+         ?resource sign:text ?content
 
-         ?resource <http://purl.org/dc/terms/subject> ?versionedDocument.
-         ?versionedDocument <http://mu.semte.ch/vocabularies/ext/content> ?content.
 
-         OPTIONAL{
-            ?versionedDocument <http://mu.semte.ch/vocabularies/ext/publicContent> ?publicContent.
-         }
 
-         BIND(coalesce(?publicContent, ?content) as ?rdfaSnippet).
+         BIND(?content as ?rdfaSnippet).
 
          FILTER (
           (!BOUND(?status)
