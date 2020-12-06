@@ -5,6 +5,7 @@ import { CronJob } from 'cron';
 
 const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
+const SEARCH_GRAPHS_BLACKLIST = process.env.SEARCH_GRAPHS_BLACKLIST ? process.env.SEARCH_GRAPHS_BLACKLIST.split(',') : [];
 //TODO: further testing, notulen linken
 
 new CronJob(CRON_FREQUENCY, async function() {
@@ -18,7 +19,7 @@ new CronJob(CRON_FREQUENCY, async function() {
 }, null, true);
 
 async function startPublishing(){
-  let unprocessedResources = await getUnprocessedPublishedResources(PENDING_TIMEOUT);
+  let unprocessedResources = await getUnprocessedPublishedResources(PENDING_TIMEOUT, MAX_ATTEMPTS, SEARCH_GRAPHS_BLACKLIST);
 
   console.log(`Found ${unprocessedResources.length} to process`);
 

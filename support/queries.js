@@ -11,7 +11,11 @@ const IS_PUBLISHED_BEHANDELING = "http://mu.semte.ch/vocabularies/ext/publishesB
 const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst";
 const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
 
-async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10){
+async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10, graphsBlacklist = [] ){
+  const graphFilter = `FILTER(?graph NOT IN
+                        (${graphsBlacklist.map(g => sparqlEscapeUri(g))})
+                       )`;
+
   let queryStr = `
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
@@ -46,6 +50,7 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
            ?status IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
           )
         )
+        ${graphsBlacklist.length ? graphFilter : ''}
       }
     }
   `;
