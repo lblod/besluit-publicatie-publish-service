@@ -1,6 +1,6 @@
 {
   "name": "besluit-publicatie-publish-service",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "mu-semtech service to extract triples from PublishedResources and map to Publicatie Besluit",
   "main": "app.js",
   "dependencies": {
