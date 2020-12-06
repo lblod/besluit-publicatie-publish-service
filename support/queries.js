@@ -13,7 +13,7 @@ const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotul
 
 async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10, graphsBlacklist = [] ){
   const graphFilter = `FILTER(?graph NOT IN
-                        (${graphsBlacklist.map(g => sparqlEscapeUri(g))})
+                        (${graphsBlacklist.map(g => sparqlEscapeUri(g)).join(', ')})
                        )`;
 
   let queryStr = `
@@ -47,7 +47,7 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
 
            ||
 
-           ?status IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
+           ?status NOT IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>, <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success>)
           )
         )
         ${graphsBlacklist.length ? graphFilter : ''}
