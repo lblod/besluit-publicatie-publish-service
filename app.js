@@ -5,8 +5,8 @@ import { CronJob } from 'cron';
 
 const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
-const SEARCH_GRAPHS_BLACKLIST = process.env.SEARCH_GRAPHS_BLACKLIST ? process.env.SEARCH_GRAPHS_BLACKLIST.split(',') : [];
 const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
+const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/public';
 //TODO: further testing, notulen linken
 
 new CronJob(CRON_FREQUENCY, async function() {
@@ -20,7 +20,7 @@ new CronJob(CRON_FREQUENCY, async function() {
 }, null, true);
 
 async function startPublishing(){
-  let unprocessedResources = await getUnprocessedPublishedResources(PENDING_TIMEOUT, MAX_ATTEMPTS, SEARCH_GRAPHS_BLACKLIST);
+  let unprocessedResources = await getUnprocessedPublishedResources(SEARCH_GRAPH, PENDING_TIMEOUT, MAX_ATTEMPTS);
 
   console.log(`Found ${unprocessedResources.length} to process`);
 

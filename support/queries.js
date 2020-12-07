@@ -11,16 +11,13 @@ const IS_PUBLISHED_BEHANDELING = "http://mu.semte.ch/vocabularies/ext/publishesB
 const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publishesBesluitenlijst";
 const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
 
-async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10, graphsBlacklist = [] ){
-  const graphFilter = `FILTER(?graph NOT IN
-                        (${graphsBlacklist.map(g => sparqlEscapeUri(g)).join(', ')})
-                       )`;
-
+async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttempts = 10){
   let queryStr = `
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
 
      SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?status ?created ?numberOfRetries {
+       BIND(${sparqlEscapeUri(graph)} as ?graph)
        GRAPH ?graph {
          ?resource a sign:PublishedResource;
                    <http://purl.org/dc/terms/created> ?created.
@@ -50,7 +47,6 @@ async function getUnprocessedPublishedResources(pendingTimeout, maxAttempts = 10
            ?status NOT IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>, <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success>)
           )
         )
-        ${graphsBlacklist.length ? graphFilter : ''}
       }
     }
   `;
