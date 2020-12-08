@@ -36,17 +36,16 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
          BIND(?content as ?rdfaSnippet).
 
          FILTER (
-          (!BOUND(?status)
+          (!BOUND(?status))
 
            ||
 
-           (?status IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < ${sparqlEscapeInt(maxAttempts)})
+           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < ${sparqlEscapeInt(maxAttempts)}
 
            ||
 
-           ?status NOT IN (<http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>, <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/success>)
+           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
           )
-        )
       }
     }
   `;
