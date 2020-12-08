@@ -10,16 +10,17 @@ const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/publ
 //TODO: further testing, notulen linken
 
 new CronJob(CRON_FREQUENCY, async function() {
-  console.log(`Service triggered by cron job at ${new Date().toISOString()}`);
   try {
-    await startPublishing();
+    await startPublishing("cron job");
   } catch (err) {
     console.log("We had a bonobo");
     console.log(err);
   }
 }, null, true);
 
-async function startPublishing(){
+async function startPublishing(origin = "http call"){
+  console.log(`Service triggered by ${origin} at ${new Date().toISOString()}`);
+
   let unprocessedResources = await getUnprocessedPublishedResources(SEARCH_GRAPH, PENDING_TIMEOUT, MAX_ATTEMPTS);
 
   console.log(`Found ${unprocessedResources.length} to process`);
