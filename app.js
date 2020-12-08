@@ -2,27 +2,14 @@ import { app } from 'mu';
 import { getUnprocessedPublishedResources, updateStatus, PENDING_STATUS, SUCCESS_STATUS, FAILED_STATUS } from './support/queries';
 import { startPipeline } from './support/pipeline';
 import { CronJob } from 'cron';
-
 const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
 const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
 const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/public';
-//TODO: further testing, notulen linken
-
-new CronJob(CRON_FREQUENCY, async function() {
-  try {
-    await startPublishing("cron job");
-  } catch (err) {
-    console.log("We had a bonobo");
-    console.log(err);
-  }
-}, null, true);
 
 async function startPublishing(origin = "http call"){
   console.log(`Service triggered by ${origin} at ${new Date().toISOString()}`);
-
   let unprocessedResources = await getUnprocessedPublishedResources(SEARCH_GRAPH, PENDING_TIMEOUT, MAX_ATTEMPTS);
-
   console.log(`Found ${unprocessedResources.length} to process`);
 
   //lock resources (yes yes should be batch operation)
@@ -48,12 +35,45 @@ async function startPublishing(origin = "http call"){
   }
 }
 
+class PublishingQueue {
+  constructor() {
+    this.queue = [];
+    this.run();
+  }
+
+  async run() {
+    if (this.queue.length > 0) {
+      console.log("executing oldest task on queue");
+      await startPublishing(this.queue.shift());
+      this.run();
+    }
+    else {
+      setTimeout(() => {this.run();}, 3000);
+    }
+  }
+
+  addJob(origin) {
+    this.queue.push(origin);
+  }
+}
+const queue = new PublishingQueue();
+
+new CronJob(CRON_FREQUENCY, async function() {
+  try {
+    queue.addJob("cron job");
+  } catch (err) {
+    console.log("We had a bonobo");
+    console.log(err);
+  }
+}, null, true);
+
+
 /**
  * Starts extracting the published resources.
  */
 app.post('/publish-tasks', async function(req, res) {
   try {
-    await startPublishing();
+    queue.addJob("http call");
     res.send( { success: true } );
   } catch (err) {
     console.log("We had a bonobo");
