@@ -105,10 +105,9 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
   graph = sparqlEscapeUri(graph);
   triples = applyEscapeFunctionData(triples);
 
-  let resources = triples.filter(isAResource);
-
+  let resources = [...new Set(triples.filter(isAResource).map((t) => t.subject))];
   for(const r of resources){
-    await getUuidForResource(r.subject, graph);
+    await getUuidForResource(r, graph);
   }
 
   let triplesStr = triples.map(t => `${t.subject} ${t.predicate} ${t.object}.`).join('\n');
