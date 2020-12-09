@@ -45,7 +45,7 @@ class PublishingQueue {
     if (this.queue.length > 0) {
       console.log("executing oldest task on queue");
       await startPublishing(this.queue.shift());
-      this.run();
+      setTimeout(() => {this.run();}, 500);
     }
     else {
       setTimeout(() => {this.run();}, 3000);
