@@ -260,7 +260,11 @@ const predicateDataTypeEscapeMap = function ( predicate ){
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBvap', escapeObjectF: sparqlEscapeUri }
   ];
-
+  let stemmingen = [
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#onderwerp', escapeObjectF: sparqlEscapeUri },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#gevolg', escapeObjectF: sparqlEscapeUri }
+  ]
   let agendapunten = [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#aangebrachtNa', escapeObjectF: sparqlEscapeUri },
@@ -320,7 +324,7 @@ const predicateDataTypeEscapeMap = function ( predicate ){
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
   ];
 
-  let allEscapeFunctions = [...besluit, ...bvap, ...agendapunten, ...zitting, ...notulen, ...besluitenlijst, ...uittreksel, ...agenda];
+  let allEscapeFunctions = [...besluit, ...bvap, ...agendapunten, ...zitting, ...notulen, ...besluitenlijst, ...uittreksel, ...agenda, ...stemmingen];
 
   return allEscapeFunctions.find(f => f.predicate == predicate);
 };

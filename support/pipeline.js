@@ -3,7 +3,7 @@ import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/rdfa-context-scanner';
 import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource,
          IS_PUBLISHED_AGENDA, IS_PUBLISHED_BEHANDELING,
-         IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN } from './queries';
+         IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN} from './queries';
 import { uuid } from 'mu';
 import crypto from 'crypto';
 import { JSDOM } from 'jsdom';
@@ -21,7 +21,7 @@ async function startPipeline(resourceToPublish){
   let contexts = analyse( doc.getTopDomNode() );
   let triples = flatTriples(contexts.map((c) => c.context));
   triples = preProcess(triples);
-
+  
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish, doc, contexts);
@@ -73,7 +73,10 @@ async function insertBesluitenlijst(triples, resourceToPublish){
   besluiten = linkToContainerResource(besluiten, besluitenlijst.subject, 'http://mu.semte.ch/vocabularies/ext/besluitenlijstBesluit');
   besluiten = postProcess(besluiten);
 
-  await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten]);
+  let stemmingen = getStemmingen(triples);
+  stemmingen = postProcess(stemmingen);
+
+  await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten, ...stemmingen]);
 }
 
 /**
@@ -107,7 +110,6 @@ async function insertUittreksel(triples, resourceToPublish, doc, contexts){
   let bvaps = getBvap(triples);
   bvaps = postProcess(bvaps);
   bvaps = linkToContainerResource(bvaps, uittreksel.subject, 'http://mu.semte.ch/vocabularies/ext/uittrekselBvap');
-
 
   let besluiten = getBesluiten(triples);
   besluiten = postProcess(besluiten);
@@ -375,7 +377,17 @@ function getBvap(triples){
   trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
   return trs;
 }
-
+function getStemmingen(triples){
+  let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Stemming');
+  //We are conservative in what to persist; we respect applicatieprofiel
+  let poi = [
+    'a',
+    'http://data.vlaanderen.be/ns/besluit#onderwerp',
+    'http://data.vlaanderen.be/ns/besluit#gevolg'
+  ];
+  trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
+  return trs;
+}
 function getAgendaPunten(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Agendapunt');
 
