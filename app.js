@@ -6,6 +6,7 @@ const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
 const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
 const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/public';
+import bodyParser from 'body-parser';
 
 async function startPublishing(origin = "http call"){
   console.log(`Service triggered by ${origin} at ${new Date().toISOString()}`);
@@ -67,6 +68,14 @@ new CronJob(CRON_FREQUENCY, async function() {
   }
 }, null, true);
 
+
+// Also parse application/json as json
+app.use( bodyParser.json( {
+  type: function(req) {
+    return /^application\/json/.test( req.get('content-type') );
+  },
+  limit: '500mb'
+} ) );
 
 /**
  * Starts extracting the published resources.
