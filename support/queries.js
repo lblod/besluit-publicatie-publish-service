@@ -262,8 +262,8 @@ const predicateDataTypeEscapeMap = function ( predicate ){
   ];
   let stemmingen = [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
-    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#onderwerp', escapeObjectF: sparqlEscapeUri },
-    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#gevolg', escapeObjectF: sparqlEscapeUri }
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#onderwerp', escapeObjectF: sparqlEscapeString },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.vlaanderen.be/ns/besluit#gevolg', escapeObjectF: sparqlEscapeString }
   ]
   let agendapunten = [
     { escapeSubjectF: sparqlEscapeUri, predicate: 'a', escapeObjectF: sparqlEscapeUri },
