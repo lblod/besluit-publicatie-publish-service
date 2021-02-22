@@ -1,4 +1,4 @@
-import { app } from 'mu';
+import { app, errorHandler } from 'mu';
 import { getUnprocessedPublishedResources, updateStatus, PENDING_STATUS, SUCCESS_STATUS, FAILED_STATUS } from './support/queries';
 import { startPipeline } from './support/pipeline';
 import { CronJob } from 'cron';
@@ -93,3 +93,4 @@ app.post('/publish-tasks', async function(req, res) {
                err: JSON.stringify(err) } );
   }
 });
+app.use(errorHandler);
