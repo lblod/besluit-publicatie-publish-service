@@ -1,0 +1,58 @@
+---
+kind: pipeline
+type: docker
+name: verify
+steps:
+- name: build-dry-run
+  image: plugins/docker
+  settings:
+    repo: lblod/besluit-publicatie-publish-service
+    dry_run: true
+    purge: true
+trigger:
+  event:
+    - push
+---
+kind: pipeline
+type: docker
+name: push-latest-build
+steps:
+- name: push-latest-build
+  image: plugins/docker
+  settings:
+    repo: lblod/besluit-publicatie-publish-service
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+trigger:
+  branch:
+    - master
+---
+kind: pipeline
+type: docker
+name: release
+steps:
+- name: build-dry-run
+  image: plugins/docker
+  settings:
+    repo: lblod/besluit-publicatie-publish-service
+    dry_run: true
+- name: push-tagged-build
+  image: plugins/docker
+  settings:
+    repo: lblod/besluit-publicatie-publish-service
+    tags: ${DRONE_TAG##v}
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    purge: true
+trigger:
+  event:
+    - tag
+---
+kind: signature
+hmac: 275afb689a1a3d4e5140bc15b4730dc4c5e6e55a838152ab456255fec2c499ee
+
+...
