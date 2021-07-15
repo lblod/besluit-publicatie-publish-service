@@ -48,7 +48,7 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
            (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
           )
       }
-    } ORDER BY ASC(?numberOfRetries)
+    } ORDER BY ASC(?numberOfRetries) ASC(?created)
   `;
 
   let res = await query(queryStr);
