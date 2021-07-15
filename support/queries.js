@@ -105,22 +105,28 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
   graph = sparqlEscapeUri(graph);
   triples = applyEscapeFunctionData(triples);
 
-  let resources = [...new Set(triples.filter(isAResource).map((t) => t.subject))];
-  for(const r of resources){
-    await getUuidForResource(r, graph);
-  }
-
-  let triplesStr = triples.map(t => `${t.subject} ${t.predicate} ${t.object}.`).join('\n');
-  let insertStr = `
+  const resources = [...new Set(triples.filter(isAResource).map((t) => t.subject))];
+  let insertedTriples = [];
+  try {
+    for(const r of resources){
+      const resourceTriples = triples.filter(t => t.subject == r);
+    await query(`
     INSERT DATA{
       GRAPH ${graph}{
-        ${triplesStr}
+        ${resourceTriples.map(t => `${t.subject} ${t.predicate} ${t.object}.`).join('\n')}
       }
     };
-  `;
-
-  await query(insertStr);
-
+    `);
+    await ensureUuidForResource(r, graph);
+    insertedTriples = insertedTriples.concat(resourceTriples);
+    }
+  }
+  catch(e) {
+    console.error('error while trying to persist data!', e.message);
+    console.info('persisted triples', JSON.stringify(insertedTriples));
+    console.info('all triples', JSON.stringify(triples));
+    throw e;
+  }
 }
 
 async function cleanUpResource(uri, exceptionList = [], graph = "http://mu.semte.ch/graphs/public"){
@@ -153,7 +159,7 @@ async function getRelationDataForZitting(zittingUri, relationUri, graph = "http:
 };
 
 
-async function getUuidForResource(escapedUri, escapedGraph ){
+async function ensureUuidForResource(escapedUri, escapedGraph ){
   let queryStr = `
        PREFIX  mu:  <http://mu.semte.ch/vocabularies/core/>
        SELECT DISTINCT ?uuid{
