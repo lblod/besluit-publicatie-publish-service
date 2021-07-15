@@ -52,6 +52,7 @@ class PublishingQueue {
         const errorMessage = e.message ? e.message : e;
         console.error("publishing failed: " + errorMessage);
         console.info(e);
+        queue.addJob("queue failure");
       }
       finally {
         setTimeout(() => {this.run();}, 500);
