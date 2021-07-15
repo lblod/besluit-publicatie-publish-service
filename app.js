@@ -8,6 +8,13 @@ const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
 const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/public';
 import bodyParser from 'body-parser';
 
+console.info(`besluit-publicatie-publish-service starting at ${new Date()}`);
+console.debug({
+  PENDING_TIMEOUT,
+  CRON_FREQUENCY,
+  MAX_ATTEMPTS,
+  SEARCH_GRAPH
+});
 async function startPublishing(origin = "http call"){
   console.log(`Service triggered by ${origin} at ${new Date().toISOString()}`);
   let unprocessedResources = await getUnprocessedPublishedResources(SEARCH_GRAPH, PENDING_TIMEOUT, MAX_ATTEMPTS);
