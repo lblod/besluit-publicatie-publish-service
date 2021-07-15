@@ -12,6 +12,7 @@ const IS_PUBLISHED_BESLUITENLIJST = "http://mu.semte.ch/vocabularies/ext/publish
 const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotulen";
 
 async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttempts = 10){
+  // put resources that already failed before at the end of queue
   let queryStr = `
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
@@ -47,7 +48,7 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
            (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
           )
       }
-    }
+    } ORDER BY ASC(?numberOfRetries)
   `;
 
   let res = await query(queryStr);
