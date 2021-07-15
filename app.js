@@ -23,8 +23,8 @@ async function startPublishing(origin = "http call"){
   //lock resources (yes yes should be batch operation)
   for(const item of unprocessedResources){
     console.log(`-- Locking resources: ${item.resource}`);
+    await updateStatus(item, PENDING_STATUS, item.numberOfRetries);
     item.numberOfRetries = parseInt((item.numberOfRetries || 0)) + 1;
-    await updateStatus(item, PENDING_STATUS);
   }
 
   for (const item of unprocessedResources) {
