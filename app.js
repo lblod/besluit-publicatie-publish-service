@@ -45,8 +45,17 @@ class PublishingQueue {
   async run() {
     if (this.queue.length > 0) {
       console.log("executing oldest task on queue");
-      await startPublishing(this.queue.shift());
-      setTimeout(() => {this.run();}, 500);
+      try {
+        await startPublishing(this.queue.shift());
+      }
+      catch(e) {
+        const errorMessage = e.message ? e.message : e;
+        console.error("publishing failed: " + errorMessage);
+        console.info(e);
+      }
+      finally {
+        setTimeout(() => {this.run();}, 500);
+      }
     }
     else {
       setTimeout(() => {this.run();}, 3000);
