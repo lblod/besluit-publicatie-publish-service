@@ -104,11 +104,14 @@ async function persistExtractedData(triples, graph = "http://mu.semte.ch/graphs/
 
   graph = sparqlEscapeUri(graph);
   triples = applyEscapeFunctionData(triples);
-
-  const resources = [...new Set(triples.filter(isAResource).map((t) => t.subject))];
   let insertedTriples = [];
   try {
-    for(const r of resources){
+    const resources = [...new Set(triples.filter(isAResource).map((t) => t.subject))];
+    for (const r of resources) {
+      await ensureUuidForResource(r, graph);
+    }
+    const subjects = [...new Set(triples.map((t) => t.subject))];
+    for(const r of subjects){
       const resourceTriples = triples.filter(t => t.subject == r);
     await query(`
     INSERT DATA{
