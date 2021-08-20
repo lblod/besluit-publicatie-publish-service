@@ -223,11 +223,24 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
 
   if(childAps.length == 0) return triples;
 
-  //find first agendapunt as uri
-  let ap1 = triples
+  //TODO: this filtering seems a bit complex...
+  const rootAps = triples
         .filter(e => e.predicate == 'a' && e.object == type)
         .map(t => t.subject)
-        .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
+        .filter(t => !childAps.map(t => t.subject).find(uri => uri == t));
+
+  if(rootAps.length > 1){
+    console.warn(`Found ${rootAps.length} potential root APs or bvAPs`);
+    console.warn(`This is probably unexpected. This case is unsupported anyway.`);
+    console.warn(`Returning random order. See also ${rootAps.join('\n')} for broken data.`);
+
+    rootAps.forEach( (s, currIndex) => {
+      triples.push({ subject: s , predicate: 'http://schema.org/position' , object: currIndex });
+    });
+
+    return triples;
+  }
+
   let ap1 = rootAps[0];
 
   if(!ap1) return triples;
