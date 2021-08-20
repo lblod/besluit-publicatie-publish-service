@@ -21,7 +21,7 @@ async function startPipeline(resourceToPublish){
   let contexts = analyse( doc.getTopDomNode() );
   let triples = flatTriples(contexts.map((c) => c.context));
   triples = preProcess(triples);
-  
+
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish, doc, contexts);
@@ -219,16 +219,16 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
   //written for Agendapunten, works on behandeling van agendapunten too.
   //assumes AP's are a list.
   //assumes no duplicates
-  let orderedPunten = [];
-  let orderAps = triples.filter(t => t.predicate == gebeurtNa);
+  let childAps = triples.filter(t => t.predicate == gebeurtNa);
 
-  if(orderAps.length == 0) return triples;
+  if(childAps.length == 0) return triples;
 
   //find first agendapunt as uri
   let ap1 = triples
         .filter(e => e.predicate == 'a' && e.object == type)
         .map(t => t.subject)
         .find(t => !orderAps.map(t => t.subject).find(uri => uri == t));
+  let ap1 = rootAps[0];
 
   if(!ap1) return triples;
 
@@ -237,8 +237,8 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
 
   triples.push({subject: ap1 , predicate: 'http://schema.org/position' , object: currIndex });
 
-  while(currIndex < orderAps.length){
-    let nextAp = orderAps.find(t => t.object == currAp);
+  while(currIndex < childAps.length){
+    let nextAp = childAps.find(t => t.object == currAp);
     currIndex += 1;
     triples.push({subject: nextAp.subject , predicate: 'http://schema.org/position' , object: currIndex });
     currAp = nextAp.subject;
