@@ -7,6 +7,7 @@ import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUp
 import { uuid } from 'mu';
 import crypto from 'crypto';
 import { JSDOM } from 'jsdom';
+import { DEFAULT_LOGS_GRAPH as LOGS_GRAPH, saveLog } from './logs';
 
 /**
  * Main entry point for extraction of data.
@@ -21,7 +22,6 @@ async function startPipeline(resourceToPublish){
   let contexts = analyse( doc.getTopDomNode() );
   let triples = flatTriples(contexts.map((c) => c.context));
   triples = preProcess(triples);
-
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
   await insertUittreksel(triples, resourceToPublish, doc, contexts);
@@ -233,12 +233,9 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
   let ap1 = rootAps[0];
 
   if(!ap1) return triples;
-
+  let currIndex = 0;
+  let currAp = ap1;
   try {
-
-    let currIndex = 0;
-    let currAp = ap1;
-
     orderInformation.push({ subject: ap1, predicate: 'http://schema.org/position', object: currIndex });
 
     while (currIndex < childAps.length) {
@@ -257,12 +254,11 @@ function orderGebeurtNa(triples, type = 'http://data.vlaanderen.be/ns/besluit#Ag
   }
   catch(e){
     console.warn(e);
-
+    saveLog(LOGS_GRAPH, 'pipeline', 'could not determine correct order of resources, position not set', {type, lastIndex: currIndex, lastResource: currAp});
     if(rootAps.length > 1){
       console.warn(`Found ${rootAps.length} potential root ${type}`);
       console.warn(`See also ${rootAps.join('\n')} for broken data.`);
     }
-
     console.warn('Returning random order');
     return triples;
   }
