@@ -312,6 +312,11 @@ function preProcess(triples){
     }
     return t;
   });
+  
+  //Remove triples with empty objects
+  //We found that the RDFa parser did not handle spaces correctly and created triples where the object URI is a ' '.
+  triples = triples.filter((t => t.object.trim().length > 0));
+
   return triples;
 };
 
