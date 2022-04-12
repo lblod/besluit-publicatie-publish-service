@@ -315,7 +315,10 @@ function preProcess(triples){
   
   //Remove triples with empty objects
   //We found that the RDFa parser did not handle spaces correctly and created triples where the object URI is a ' '.
-  triples = triples.filter((t => t.object.trim().length > 0));
+  triples = triples.filter(((t) => 
+    !(t.datatype === 'http://www.w3.org/2000/01/rdf-schema#Resource' &&
+      t.object.trim().length < 1)
+  ));
 
   return triples;
 };
