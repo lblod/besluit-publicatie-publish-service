@@ -28,6 +28,9 @@ steps:
 trigger:
   branch:
     - master
+  event:
+    exclude:
+    - pull_request
 ---
 kind: pipeline
 type: docker
