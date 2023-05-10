@@ -18,7 +18,7 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
 
      SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?status ?created ?numberOfRetries {
-       BIND(${sparqlEscapeUri(graph)} as ?graph)
+       VALUES ?graph { ${sparqlEscapeUri(graph)} }
        GRAPH ?graph {
          ?resource a sign:PublishedResource;
                    <http://purl.org/dc/terms/created> ?created.
