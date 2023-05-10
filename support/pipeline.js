@@ -378,6 +378,7 @@ function getBesluiten(triples){
     'http://www.w3.org/ns/prov#value',
     'http://www.w3.org/ns/prov#wasDerivedFrom',
     'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit',
+    'http://purl.org/dc/terms/hasPart'
   ];
 
   trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
