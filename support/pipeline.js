@@ -76,8 +76,6 @@ async function insertBesluitenlijst(triples, resourceToPublish){
   let stemmingen = getStemmingen(triples);
   stemmingen = postProcess(stemmingen);
 
-  
-
   await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten, ...stemmingen]);
 }
 
