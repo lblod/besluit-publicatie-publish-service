@@ -76,6 +76,8 @@ async function insertBesluitenlijst(triples, resourceToPublish){
   let stemmingen = getStemmingen(triples);
   stemmingen = postProcess(stemmingen);
 
+  
+
   await persistExtractedData([...besluitenlijstTrps, ...bvaps, ...besluiten, ...stemmingen]);
 }
 
@@ -361,7 +363,6 @@ async function hashStr(message){
 
 function getBesluiten(triples){
   let trs = triples.filter(e => e.predicate == 'a' && e.object == 'http://data.vlaanderen.be/ns/besluit#Besluit');
-
   //We are conservative in what to persist; we respect applicatieprofiel
   let poi = [
     'a',
@@ -378,7 +379,7 @@ function getBesluiten(triples){
     'http://www.w3.org/ns/prov#value',
     'http://www.w3.org/ns/prov#wasDerivedFrom',
     'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit',
-    'http://purl.org/dc/terms/hasPart'
+    'http://data.europa.eu/eli/ontology#related_to'
   ];
 
   trs = triples.filter(t => trs.find(a => a.subject == t.subject) && poi.find(p => p == t.predicate));
