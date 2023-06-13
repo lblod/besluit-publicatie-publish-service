@@ -1,3 +1,13 @@
+
+## 0.11.0 (2023-06-13)
+
+#### :rocket: Enhancement
+* [#10](https://github.com/lblod/besluit-publicatie-publish-service/pull/10) Feature/add regulatory statement to besluit ([@lagartoverde](https://github.com/lagartoverde))
+
+#### Committers: 1
+- Oscar Rodriguez Villalobos ([@lagartoverde](https://github.com/lagartoverde))
+
+
 ## 0.10.0 (2021-08-23)
 
 #### :rocket: Enhancement
