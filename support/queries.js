@@ -18,7 +18,7 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
 
      SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?status ?created ?numberOfRetries {
-       BIND(${sparqlEscapeUri(graph)} as ?graph)
+       VALUES ?graph { ${sparqlEscapeUri(graph)} }
        GRAPH ?graph {
          ?resource a sign:PublishedResource;
                    <http://purl.org/dc/terms/created> ?created.
@@ -253,7 +253,8 @@ const predicateDataTypeEscapeMap = function ( predicate ){
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#has_part', escapeObjectF: sparqlEscapeString },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#value', escapeObjectF: sparqlEscapeString },
     { escapeSubjectF: sparqlEscapeUri, predicate: 'http://www.w3.org/ns/prov#wasDerivedFrom', escapeObjectF: sparqlEscapeUri },
-    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit', escapeObjectF: sparqlEscapeUri }
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit', escapeObjectF: sparqlEscapeUri },
+    { escapeSubjectF: sparqlEscapeUri, predicate: 'http://data.europa.eu/eli/ontology#related_to', escapeObjectF: sparqlEscapeUri }
     ];
 
   let bvap = [
