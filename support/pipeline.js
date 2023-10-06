@@ -2,8 +2,10 @@ import {findFirstNodeOfType, findAllNodesOfType} from '@lblod/marawa/dom-helpers
 import rdfaDomDocument from './rdfa-dom-document';
 import { analyse, resolvePrefixes } from '@lblod/marawa/rdfa-context-scanner';
 import { getRelationDataForZitting, persistExtractedData, belongsToType, cleanUpResource,
-         IS_PUBLISHED_AGENDA, IS_PUBLISHED_BEHANDELING,
-         IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN} from './queries';
+  IS_PUBLISHED_AGENDA, IS_PUBLISHED_BEHANDELING,
+  IS_PUBLISHED_BESLUITENLIJST, IS_PUBLISHED_NOTULEN,
+  insertZittingPermalinkQuery
+} from './queries';
 import { uuid } from 'mu';
 import crypto from 'crypto';
 import { JSDOM } from 'jsdom';
@@ -27,6 +29,8 @@ async function startPipeline(resourceToPublish){
   await insertUittreksel(triples, resourceToPublish, doc, contexts);
   await insertBesluitenlijst(triples, resourceToPublish);
   await insertNotulen(triples, resourceToPublish, doc, contexts);
+
+  await insertZittingPermalink(triples);
 };
 
 /**
@@ -181,6 +185,12 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts){
   await persistExtractedData(trs);
 }
 
+async function insertZittingPermalink(triples){
+  const zittingUri = await getZittingUri(triples);
+
+  await insertZittingPermalinkQuery(zittingUri);
+}
+
 /*************************************************************
  * HELPERS
  *************************************************************/
@@ -188,6 +198,12 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts){
 function isAZitting(triple){
   return triple.predicate == 'a' && triple.object == 'http://data.vlaanderen.be/ns/besluit#Zitting';
 };
+
+function getZittingUri(triples){
+  let zitting = triples.find(isAZitting);
+
+  return zitting.subject;
+}
 
 /*
  * If new set of resources contains less resources then the previous version, remove them here.
@@ -312,10 +328,10 @@ function preProcess(triples){
     }
     return t;
   });
-  
+
   //Remove triples with empty objects
   //We found that the RDFa parser did not handle spaces correctly and created triples where the object URI is a ' '.
-  triples = triples.filter(((t) => 
+  triples = triples.filter(((t) =>
     !(t.datatype === 'http://www.w3.org/2000/01/rdf-schema#Resource' &&
       t.object.trim().length < 1)
   ));
