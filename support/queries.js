@@ -173,7 +173,7 @@ async function insertZittingPermalinkQuery(zittingUri, graph = "http://mu.semte.
       
       INSERT {
         GRAPH ${sparqlEscapeUri(graph)} {
-          ?permalink foaf:page ?redirectUrl.
+          ${sparqlEscapeUri(zittingUri)} foaf:page ?redirectUrl.
         }
       }
       WHERE {
@@ -183,7 +183,6 @@ async function insertZittingPermalinkQuery(zittingUri, graph = "http://mu.semte.
               besluit:bestuurt ?bestuurseenheid .
           ?bestuurseenheid skos:prefLabel ?administrativeUnitName ;
               (besluit:classificatie/skos:prefLabel) ?administrativeUnitTypeName .
-          BIND(URI(CONCAT("http://permalink/zitting/", ?zittingUuid)) AS ?permalink)
           BIND(
               CONCAT("/", ?administrativeUnitName, "/", ?administrativeUnitTypeName, "/zittingen/", ?zittingUuid)
               AS ?redirectUrl
