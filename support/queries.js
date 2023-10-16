@@ -161,6 +161,39 @@ async function getRelationDataForZitting(zittingUri, relationUri, graph = "http:
   return parseResult(res);
 };
 
+async function insertZittingPermalinkQuery(zittingUri, graph = "http://mu.semte.ch/graphs/public"){
+  let queryStr = `
+      PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+      PREFIX mandaat: <http://data.vlaanderen.be/ns/mandaat#>
+      PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+      PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+      PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+      PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+      
+      INSERT {
+        GRAPH ${sparqlEscapeUri(graph)} {
+          ${sparqlEscapeUri(zittingUri)} foaf:page ?redirectUrl.
+        }
+      }
+      WHERE {
+          ${sparqlEscapeUri(zittingUri)} mu:uuid ?zittingUuid ;
+              (besluit:isGehoudenDoor/mandaat:isTijdspecialisatieVan) ?administrativeUnit .
+          ?administrativeUnit skos:prefLabel ?administrativeUnitFullName ;
+              besluit:bestuurt ?bestuurseenheid .
+          ?bestuurseenheid skos:prefLabel ?administrativeUnitName ;
+              (besluit:classificatie/skos:prefLabel) ?administrativeUnitTypeName .
+          BIND(
+              CONCAT("/", ?administrativeUnitName, "/", ?administrativeUnitTypeName, "/zittingen/", ?zittingUuid)
+              AS ?redirectUrl
+          )
+      }
+
+  `;
+
+  await query(queryStr);
+}
+
 
 async function ensureUuidForResource(escapedUri, escapedGraph ){
   let queryStr = `
@@ -353,6 +386,7 @@ export { getUnprocessedPublishedResources,
          belongsToType,
          cleanUpResource,
          getRelationDataForZitting,
+         insertZittingPermalinkQuery,
          PENDING_STATUS,
          FAILED_STATUS,
          SUCCESS_STATUS,
