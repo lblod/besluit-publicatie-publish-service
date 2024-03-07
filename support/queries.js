@@ -1,7 +1,7 @@
 import mu from 'mu';
 import {uuid, sparqlEscapeString, sparqlEscapeUri, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
-import { readFile } from 'fs';
+import { readFile } from 'fs/promises';
 
 const PENDING_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending";
 const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed";
@@ -27,22 +27,13 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
          {
          ?resource a sign:PublishedResource;
                    <http://purl.org/dc/terms/created> ?created.
-         }
-         UNION {
-            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
-         }
-         UNION {
-            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
-         }
-         UNION {
-           ?resource sign:text ?content
-           BIND(?content as ?rdfaSnippet).
-         }
-         UNION {
-           ?resource prov:generated ?file.
-           ?fileOnDisk nie:dataSource ?file.
-           BIND(IRI(REPLACE(STR(?fileUrl), "share://", "/share/")) as ?filePath)
-         }
+            OPTIONAL {
+                ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+            }
+            OPTIONAL {
+                ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
+            }
+
          FILTER (
           (!BOUND(?status))
 
@@ -54,6 +45,16 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
 
            (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
           )
+         }
+         {
+           ?resource sign:text ?content
+           BIND(?content as ?rdfaSnippet).
+         }
+         UNION {
+           ?resource prov:generated ?file.
+           ?fileOnDisk nie:dataSource ?file.
+           BIND(IRI(REPLACE(STR(?fileOnDisk), "share://", "/share/")) as ?filePath)
+         }
       }
     } ORDER BY ASC(?numberOfRetries) ASC(?created)
   `;
