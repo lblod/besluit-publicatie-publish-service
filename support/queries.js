@@ -61,7 +61,7 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
   let results = parseResult(res);
   for (const result of results) {
     if (!result.rdfaSnippet && result.filePath) {
-      result.rdfaSnippet = await readFile(result.filePath);
+        result.rdfaSnippet = await readFile(result.filePath, "utf8");
     }
   }
   return results.filter(filterPendingTimeout(pendingTimeout));
