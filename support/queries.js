@@ -1,6 +1,7 @@
 import mu from 'mu';
 import {uuid, sparqlEscapeString, sparqlEscapeUri, sparqlEscapeInt, sparqlEscapeDate, sparqlEscapeDateTime, sparqlEscapeBool } from 'mu';
 import { querySudo as query, updateSudo as update } from '@lblod/mu-auth-sudo';
+import { readFile } from 'fs/promises';
 
 const PENDING_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending";
 const FAILED_STATUS = "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed";
@@ -14,45 +15,55 @@ const IS_PUBLISHED_NOTULEN = "http://mu.semte.ch/vocabularies/ext/publishesNotul
 async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttempts = 10){
   // put resources that already failed before at the end of queue
   let queryStr = `
+    PREFIX  xsd:  <http://www.w3.org/2001/XMLSchema#>
     PREFIX sign: <http://mu.semte.ch/vocabularies/ext/signing/>
     PREFIX publicationStatus: <http://mu.semte.ch/vocabularies/ext/signing/publication-status/>
-
-     SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?status ?created ?numberOfRetries {
+    PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+     SELECT DISTINCT ?graph ?resource ?rdfaSnippet ?filePath ?status ?created ?numberOfRetries {
        VALUES ?graph { ${sparqlEscapeUri(graph)} }
+
        GRAPH ?graph {
-         ?resource a sign:PublishedResource;
-                   <http://purl.org/dc/terms/created> ?created.
+            ?resource a sign:PublishedResource; <http://purl.org/dc/terms/created> ?created.
+            {
+                {
+                    ?resource sign:text ?content
+                    BIND(?content as ?rdfaSnippet).
+                } UNION {
+                    ?resource prov:generated ?file.
+                    ?fileOnDisk nie:dataSource ?file.
+                    BIND(IRI(REPLACE(STR(?fileOnDisk), "share://", "/share/")) as ?filePath)
+                }
+            }
+            OPTIONAL {
+                {
+                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+                } UNION {
+                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
+                }
 
-         OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
-         }
+            }
+            FILTER (
+                (!BOUND(?status)) ||
+                (
+                    (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) &&
+                    (?numberOfRetries < ${sparqlEscapeInt(maxAttempts)})
+                ) ||
+                (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
+            )
+        }
 
-         OPTIONAL{
-            ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
-         }
-         ?resource sign:text ?content
 
-
-
-         BIND(?content as ?rdfaSnippet).
-
-         FILTER (
-          (!BOUND(?status))
-
-           ||
-
-           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < ${sparqlEscapeInt(maxAttempts)}
-
-           ||
-
-           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
-          )
-      }
     } ORDER BY ASC(?numberOfRetries) ASC(?created)
   `;
 
   let res = await query(queryStr);
   let results = parseResult(res);
+  for (const result of results) {
+    if (!result.rdfaSnippet && result.filePath) {
+      result.rdfaSnippet = await readFile(result.filePath);
+    }
+  }
   return results.filter(filterPendingTimeout(pendingTimeout));
 }
 
