@@ -24,38 +24,36 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
        VALUES ?graph { ${sparqlEscapeUri(graph)} }
 
        GRAPH ?graph {
-         {
-         ?resource a sign:PublishedResource;
-                   <http://purl.org/dc/terms/created> ?created.
-            OPTIONAL {
-                ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+            ?resource a sign:PublishedResource; <http://purl.org/dc/terms/created> ?created.
+            {
+                {
+                    ?resource sign:text ?content
+                    BIND(?content as ?rdfaSnippet).
+                } UNION {
+                    ?resource prov:generated ?file.
+                    ?fileOnDisk nie:dataSource ?file.
+                    BIND(IRI(REPLACE(STR(?fileOnDisk), "share://", "/share/")) as ?filePath)
+                }
             }
             OPTIONAL {
-                ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
+                {
+                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
+                } UNION {
+                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
+                }
+
             }
+            FILTER (
+                (!BOUND(?status)) ||
+                (
+                    (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) &&
+                    (?numberOfRetries < ${sparqlEscapeInt(maxAttempts)})
+                ) ||
+                (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
+            )
+        }
 
-         FILTER (
-          (!BOUND(?status))
 
-           ||
-
-           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/failed>) && ?numberOfRetries < ${sparqlEscapeInt(maxAttempts)}
-
-           ||
-
-           (?status = <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending>)
-          )
-         }
-         {
-           ?resource sign:text ?content
-           BIND(?content as ?rdfaSnippet).
-         }
-         UNION {
-           ?resource prov:generated ?file.
-           ?fileOnDisk nie:dataSource ?file.
-           BIND(IRI(REPLACE(STR(?fileOnDisk), "share://", "/share/")) as ?filePath)
-         }
-      }
     } ORDER BY ASC(?numberOfRetries) ASC(?created)
   `;
 
