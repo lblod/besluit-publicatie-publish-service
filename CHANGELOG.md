@@ -1,4 +1,16 @@
 
+
+## 0.12.0 (2024-03-21)
+
+#### :rocket: Enhancement
+* [#12](https://github.com/lblod/besluit-publicatie-publish-service/pull/12) support content in files for  published resources ([@nvdk](https://github.com/nvdk))
+* [#11](https://github.com/lblod/besluit-publicatie-publish-service/pull/11) GN-4435: Insert permalink for Zitting ([@dkozickis](https://github.com/dkozickis))
+
+#### Committers: 2
+- Deniss Kozickis ([@dkozickis](https://github.com/dkozickis))
+- Niels V ([@nvdk](https://github.com/nvdk))
+
+
 ## 0.11.0 (2023-06-13)
 
 #### :rocket: Enhancement
