@@ -1,5 +1,9 @@
 
 
+## 0.12.1 (2024-03-21)
+fix file encoding for readfile
+
+
 ## 0.12.0 (2024-03-21)
 
 #### :rocket: Enhancement
