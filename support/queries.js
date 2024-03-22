@@ -36,11 +36,10 @@ async function getUnprocessedPublishedResources(graph, pendingTimeout, maxAttemp
                 }
             }
             OPTIONAL {
-                {
                     ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/number-of-retries> ?numberOfRetries.
-                } UNION {
-                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
                 }
+            OPTIONAL {
+                    ?resource <http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status> ?status.
 
             }
             FILTER (
