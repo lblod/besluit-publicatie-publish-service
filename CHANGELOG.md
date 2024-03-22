@@ -1,5 +1,9 @@
 
 
+## 0.12.2 (2024-03-22)
+revert template bump and fix query again
+
+
 ## 0.12.1 (2024-03-21)
 fix file encoding for readfile
 
