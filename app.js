@@ -7,6 +7,7 @@ const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || '0 */5 * * * *';
 const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
 const SEARCH_GRAPH = process.env.SEARCH_GRAPH || 'http://mu.semte.ch/graphs/public';
 import bodyParser from 'body-parser';
+import { DEFAULT_LOGS_GRAPH as LOGS_GRAPH, saveLog } from './logs';
 
 console.info(`besluit-publicatie-publish-service starting at ${new Date()}`);
 console.debug({
@@ -15,6 +16,7 @@ console.debug({
   MAX_ATTEMPTS,
   SEARCH_GRAPH
 });
+
 async function startPublishing(origin = "http call"){
   console.log(`Service triggered by ${origin} at ${new Date().toISOString()}`);
   let unprocessedResources = await getUnprocessedPublishedResources(SEARCH_GRAPH, PENDING_TIMEOUT, MAX_ATTEMPTS);
@@ -36,9 +38,10 @@ async function startPublishing(origin = "http call"){
     }
 
     catch(e){
-      console.log(`Error processing: ${item.resource}`);
-      console.log(e);
+      console.error(`Error processing: ${item.resource}`);
+      console.error(e);
       await updateStatus(item, FAILED_STATUS, item.numberOfRetries);
+      await saveLog(LOGS_GRAPH, 'app', e, { resourceURI: item.resource} );
     }
   }
 }
