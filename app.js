@@ -70,6 +70,7 @@ class PublishingQueue {
         const errorMessage = e.message ? e.message : e;
         console.error(`publishing failed: ${errorMessage}`);
         console.info(e);
+        // eslint-disable-next-line no-use-before-define
         queue.addJob("queue failure");
       } finally {
         setTimeout(() => {
