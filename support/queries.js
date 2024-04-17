@@ -306,9 +306,9 @@ const parseResult = function (result) {
   const bindingKeys = result.head.vars;
   return result.results.bindings.map((row) => {
     const obj = {};
-    bindingKeys.forEach(
-      (key) => (obj[key] = row[key] ? row[key].value : undefined),
-    );
+    bindingKeys.forEach((key) => {
+      obj[key] = row[key] ? row[key].value : undefined;
+    });
     return obj;
   });
 };
