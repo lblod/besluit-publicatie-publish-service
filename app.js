@@ -90,6 +90,7 @@ class PublishingQueue {
 }
 const queue = new PublishingQueue();
 
+// eslint-disable-next-line no-new
 new CronJob(
   CRON_FREQUENCY,
   async () => {
