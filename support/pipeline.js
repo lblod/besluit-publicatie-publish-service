@@ -280,6 +280,13 @@ function getZittingUri(triples) {
   return zitting.subject;
 }
 
+/**
+ * @param {[]} triples
+ * @param {string} objectUri
+ */
+function findTripleWithObject(triples, objectUri) {
+  return triples.find((t) => t.object === objectUri);
+}
 /*
  * Adds order to bvap and agendapunten (AP extension)
  */
@@ -320,10 +327,12 @@ function orderGebeurtNa(
     });
 
     while (currIndex < childAps.length) {
-      const nextAp = childAps.find((t) => t.object === currAp);
+      const nextAp = findTripleWithObject(childAps, currAp);
 
       if (!nextAp) {
-        throw new Error(`Ordering of ${type} is unexpected, we expect linear ordering`);
+        throw new Error(
+          `Ordering of ${type} is unexpected, we expect linear ordering`,
+        );
       }
 
       currIndex += 1;
@@ -409,7 +418,7 @@ function preProcess(incomingTriples) {
   };
   triples = triples.map((t) => {
     if (remapP[t.predicate]) {
-      t.predicate = remapP[t.predicate];
+      return { ...t, predicate: remapP[t.predicate] };
     }
     return t;
   });
