@@ -674,9 +674,9 @@ function getZittingResource(triples) {
 /**
  * returns the first domNode where resource is the subject */
 function findNodeForResource(orderedContexts, resource) {
-  for (let idx = 0; idx < orderedContexts.length; idx++) {
+  for (let idx = 0; idx < orderedContexts.length; idx += 1) {
     const ctxObj = orderedContexts[idx];
-    for (let cdx = 0; cdx < ctxObj.context.length; cdx++) {
+    for (let cdx = 0; cdx < ctxObj.context.length; cdx += 1) {
       const triple = ctxObj.context[cdx];
       if (triple.subject === resource) return ctxObj.semanticNode.domNode;
     }
