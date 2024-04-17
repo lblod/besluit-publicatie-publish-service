@@ -1,18 +1,12 @@
 /* eslint-disable no-use-before-define */
-import {
-  findFirstNodeOfType,
-  findAllNodesOfType,
-} from "@lblod/marawa/dom-helpers";
-import { analyse, resolvePrefixes } from "@lblod/marawa/rdfa-context-scanner";
+import { analyse } from "@lblod/marawa/rdfa-context-scanner";
 // eslint-disable-next-line import/no-unresolved
 import { uuid } from "mu";
 import crypto from "crypto";
 import { JSDOM } from "jsdom";
 import {
-  getRelationDataForZitting,
   persistExtractedData,
   belongsToType,
-  cleanUpResource,
   IS_PUBLISHED_AGENDA,
   IS_PUBLISHED_BEHANDELING,
   IS_PUBLISHED_BESLUITENLIJST,
@@ -146,7 +140,6 @@ async function insertUittreksel(triples, resourceToPublish, doc, contexts) {
   const besluitIRIs = triples
     .filter((t) => t.object === "http://data.vlaanderen.be/ns/besluit#Besluit")
     .map((t) => t.subject);
-  const dom = doc.getDom();
   for (const besluitIRI of new Set(besluitIRIs)) {
     const besluitDOM = findNodeForResource(contexts, besluitIRI);
     enrichBesluit(besluitDOM, besluitIRI, triples);
@@ -287,40 +280,6 @@ function getZittingUri(triples) {
   return zitting.subject;
 }
 
-/*
- * If new set of resources contains less resources then the previous version, remove them here.
- */
-async function cleanupDeltaRelationsToZitting(
-  zittingTriple,
-  zittingProperty,
-  newTriples,
-) {
-  const res = await getRelationDataForZitting(
-    zittingTriple.subject,
-    zittingProperty,
-  );
-  const uris = res.map((d) => d.o);
-  const obsoleteUris = uris.filter(
-    (uri) => !newTriples.find((t) => t.subject == uri),
-  );
-  for (const uri of obsoleteUris) {
-    await cleanUpResource(uri);
-  }
-}
-
-/*
- * A bunch of triples could need an update, first remove their previous values
- */
-async function batchCleanupBeforeUpdate(triples, type, exceptionList) {
-  const subjectUris = new Set(
-    triples
-      .filter((t) => t.predicate == "a" && t.object == type)
-      .map((t) => t.subject),
-  );
-  for (const uri of subjectUris) {
-    await cleanUpResource(uri, exceptionList);
-  }
-}
 
 /*
  * Adds order to bvap and agendapunten (AP extension)
