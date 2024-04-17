@@ -400,7 +400,8 @@ function linkToPublishedResource(preparedTriples, resourceUri) {
 /*
  * encapsulate some preprocessing, e.g. remapping stuff etc
  */
-function preProcess(triples) {
+function preProcess(incomingTriples) {
+  let triples = incomingTriples;
   // remap triples (for backwards compatibilty, will be deleted one day)
   const remapP = {
     "http://data.vlaanderen.be/ns/besluit#heeftAgendapunt":
