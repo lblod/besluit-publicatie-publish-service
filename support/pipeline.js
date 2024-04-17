@@ -323,7 +323,7 @@ function orderGebeurtNa(
       const nextAp = childAps.find((t) => t.object === currAp);
 
       if (!nextAp) {
-        throw `Ordering of ${type} is unexpected, we expect linear ordering`;
+        throw new Error(`Ordering of ${type} is unexpected, we expect linear ordering`);
       }
 
       currIndex += 1;
