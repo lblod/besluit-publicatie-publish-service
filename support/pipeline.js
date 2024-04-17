@@ -269,8 +269,8 @@ async function insertZittingPermalink(triples) {
 
 function isAZitting(triple) {
   return (
-    triple.predicate == "a" &&
-    triple.object == "http://data.vlaanderen.be/ns/besluit#Zitting"
+    triple.predicate === "a" &&
+    triple.object === "http://data.vlaanderen.be/ns/besluit#Zitting"
   );
 }
 
@@ -293,15 +293,15 @@ function orderGebeurtNa(
   // assumes AP's are a list.
   // assumes no duplicates
   const orderInformation = [];
-  const childAps = triples.filter((t) => t.predicate == gebeurtNa);
+  const childAps = triples.filter((t) => t.predicate === gebeurtNa);
 
-  if (childAps.length == 0) return triples;
+  if (childAps.length === 0) return triples;
 
   // TODO: this filtering seems a bit complex...
   const rootAps = triples
-    .filter((e) => e.predicate == "a" && e.object == type)
+    .filter((e) => e.predicate === "a" && e.object === type)
     .map((t) => t.subject)
-    .filter((t) => !childAps.map((t) => t.subject).find((uri) => uri == t));
+    .filter((t) => !childAps.map((t) => t.subject).find((uri) => uri === t));
 
   const ap1 = rootAps[0];
 
@@ -318,7 +318,7 @@ function orderGebeurtNa(
     });
 
     while (currIndex < childAps.length) {
-      const nextAp = childAps.find((t) => t.object == currAp);
+      const nextAp = childAps.find((t) => t.object === currAp);
 
       if (!nextAp) {
         throw `Ordering of ${type} is unexpected, we expect linear ordering`;
@@ -352,7 +352,7 @@ function orderGebeurtNa(
  */
 function linkToZitting(preparedTriples, origTriples, predicate) {
   const zitting = origTriples.find(isAZitting);
-  const resources = preparedTriples.filter((t) => t.predicate == "a");
+  const resources = preparedTriples.filter((t) => t.predicate === "a");
   resources.forEach((t) => {
     preparedTriples.push({
       subject: zitting.subject,
@@ -368,7 +368,7 @@ function linkToContainerResource(
   containerResource,
   predicate,
 ) {
-  const resources = preparedTriples.filter((t) => t.predicate == "a");
+  const resources = preparedTriples.filter((t) => t.predicate === "a");
   resources.forEach((t) => {
     preparedTriples.push({
       subject: containerResource,
@@ -384,7 +384,7 @@ function linkToContainerResource(
  */
 function linkToPublishedResource(preparedTriples, resourceUri) {
   const predicate = "http://www.w3.org/ns/prov#wasDerivedFrom";
-  const resources = preparedTriples.filter((t) => t.predicate == "a"); // extract the types
+  const resources = preparedTriples.filter((t) => t.predicate === "a"); // extract the types
   resources.forEach((t) => {
     preparedTriples.push({
       subject: t.subject,
@@ -465,8 +465,8 @@ async function hashStr(message) {
 function getBesluiten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate == "a" &&
-      e.object == "http://data.vlaanderen.be/ns/besluit#Besluit",
+      e.predicate === "a" &&
+      e.object === "http://data.vlaanderen.be/ns/besluit#Besluit",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
@@ -489,8 +489,8 @@ function getBesluiten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject == t.subject) &&
-      poi.find((p) => p == t.predicate),
+      trs.find((a) => a.subject === t.subject) &&
+      poi.find((p) => p === t.predicate),
   );
   return trs;
 }
@@ -498,8 +498,8 @@ function getBesluiten(triples) {
 function getBvap(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate == "a" &&
-      e.object ==
+      e.predicate === "a" &&
+      e.object ===
         "http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt",
   );
 
@@ -521,16 +521,16 @@ function getBvap(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject == t.subject) &&
-      poi.find((p) => p == t.predicate),
+      trs.find((a) => a.subject === t.subject) &&
+      poi.find((p) => p === t.predicate),
   );
   return trs;
 }
 function getStemmingen(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate == "a" &&
-      e.object == "http://data.vlaanderen.be/ns/besluit#Stemming",
+      e.predicate === "a" &&
+      e.object === "http://data.vlaanderen.be/ns/besluit#Stemming",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
@@ -540,16 +540,16 @@ function getStemmingen(triples) {
   ];
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject == t.subject) &&
-      poi.find((p) => p == t.predicate),
+      trs.find((a) => a.subject === t.subject) &&
+      poi.find((p) => p === t.predicate),
   );
   return trs;
 }
 function getAgendaPunten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate == "a" &&
-      e.object == "http://data.vlaanderen.be/ns/besluit#Agendapunt",
+      e.predicate === "a" &&
+      e.object === "http://data.vlaanderen.be/ns/besluit#Agendapunt",
   );
 
   // We are conservative in what to persist; we respect applicatieprofiel
@@ -569,8 +569,8 @@ function getAgendaPunten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject == t.subject) &&
-      poi.find((p) => p == t.predicate),
+      trs.find((a) => a.subject === t.subject) &&
+      poi.find((p) => p === t.predicate),
   );
   return trs;
 }
@@ -604,8 +604,8 @@ function enrichBesluit(dom, besluitIRI, triples) {
     ); // TODO: assumes one zitting!
     const agendapuntTriple = triples.find(
       (t) =>
-        t.subject == behandeling.subject &&
-        t.predicate == "http://purl.org/dc/terms/subject",
+        t.subject === behandeling.subject &&
+        t.predicate === "http://purl.org/dc/terms/subject",
     );
     if (agendapuntTriple && zittingTriple) {
       const agendapuntToZitting = document.createElement("link");
@@ -663,8 +663,8 @@ function getZittingResource(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject == t.subject) &&
-      poi.find((p) => p == t.predicate),
+      trs.find((a) => a.subject === t.subject) &&
+      poi.find((p) => p === t.predicate),
   );
   return trs;
 }
