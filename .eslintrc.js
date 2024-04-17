@@ -10,7 +10,8 @@ module.exports = {
   },
   rules: {
     "no-console": "off",
-    'import/prefer-default-export': 'off',
-    'no-restricted-syntax': 'off',
+    "import/prefer-default-export": "off",
+    "no-restricted-syntax": "off",
+    "no-await-in-loop": "warn",
   },
 };
