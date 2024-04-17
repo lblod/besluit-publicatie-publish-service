@@ -14,6 +14,7 @@ import {
   insertZittingPermalinkQuery,
 } from "./queries";
 import RdfaDomDocument from "./rdfa-dom-document";
+import { persistContentToFile, writeFileMetadataToDb } from './file-utils';
 
 /**
  * Main entry point for extraction of data.
@@ -241,11 +242,11 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts) {
     predicate: "a",
     object: "http://mu.semte.ch/vocabularies/ext/Notulen",
   });
-  trs.push({
-    subject,
-    predicate: "http://www.w3.org/ns/prov#value",
-    object: enrichNotulen(triples, doc, contexts),
-  });
+    const fileMetadata = await persistContentToFile(doc.getTopDomNode().innerHTML, ['enriched-notulen']);
+  const logicalFileUri = await writeFileMetadataToDb(fileMetadata);
+  // using the prov:generated predicate here to mirror how we link file data to
+  // PublishedResource objects coming from GN
+  trs.push({ subject, predicate: 'http://www.w3.org/ns/prov#generated', object: logicalFileUri });
   linkToZitting(
     trs,
     triples,
