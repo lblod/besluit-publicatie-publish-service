@@ -280,7 +280,6 @@ function getZittingUri(triples) {
   return zitting.subject;
 }
 
-
 /*
  * Adds order to bvap and agendapunten (AP extension)
  */
@@ -301,7 +300,10 @@ function orderGebeurtNa(
   const rootAps = triples
     .filter((e) => e.predicate === "a" && e.object === type)
     .map((t) => t.subject)
-    .filter((t) => !childAps.map((t) => t.subject).find((uri) => uri === t));
+    .filter(
+      (t) =>
+        !childAps.map((apTriple) => apTriple.subject).find((uri) => uri === t),
+    );
 
   const ap1 = rootAps[0];
 
