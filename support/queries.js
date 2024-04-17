@@ -131,7 +131,7 @@ async function persistExtractedData(
   graph = "http://mu.semte.ch/graphs/public",
 ) {
   // we assume triples are expanded
-  if (triples.length == 0) {
+  if (triples.length === 0) {
     return;
   }
 
@@ -147,7 +147,7 @@ async function persistExtractedData(
     }
     const subjects = [...new Set(triples.map((t) => t.subject))];
     for (const r of subjects) {
-      const resourceTriples = triples.filter((t) => t.subject == r);
+      const resourceTriples = triples.filter((t) => t.subject === r);
       await query(`
     INSERT DATA{
       GRAPH ${graph}{
@@ -275,7 +275,7 @@ function applyEscapeFunctionData(triples) {
     .map((t) => {
       const p = predicateDataTypeEscapeMap(t.predicate);
       const escapedPredicate =
-        p.predicate == "a" ? "a" : sparqlEscapeUri(t.predicate);
+        p.predicate === "a" ? "a" : sparqlEscapeUri(t.predicate);
       try {
         return {
           subject: p.escapeSubjectF(t.subject),
@@ -293,7 +293,7 @@ function applyEscapeFunctionData(triples) {
 }
 
 function isAResource(triple) {
-  return triple.predicate == "a";
+  return triple.predicate === "a";
 }
 
 /**
@@ -722,12 +722,12 @@ const predicateDataTypeEscapeMap = function (predicate) {
     ...stemmingen,
   ];
 
-  return allEscapeFunctions.find((f) => f.predicate == predicate);
+  return allEscapeFunctions.find((f) => f.predicate === predicate);
 };
 
 function sparqlEscapeBoolWrapper(bool) {
   if (typeof bool === "string") {
-    return sparqlEscapeBool(bool == "true");
+    return sparqlEscapeBool(bool === "true");
   }
   return sparqlEscapeBool(bool);
 }
