@@ -135,33 +135,33 @@ async function persistExtractedData(
     return;
   }
 
-  graph = sparqlEscapeUri(graph);
-  triples = applyEscapeFunctionData(triples);
+  const escapedGraph = sparqlEscapeUri(graph);
+  const escapedTriples = applyEscapeFunctionData(triples);
   let insertedTriples = [];
   try {
     const resources = [
-      ...new Set(triples.filter(isAResource).map((t) => t.subject)),
+      ...new Set(escapedTriples.filter(isAResource).map((t) => t.subject)),
     ];
     for (const r of resources) {
-      await ensureUuidForResource(r, graph);
+      await ensureUuidForResource(r, escapedGraph);
     }
-    const subjects = [...new Set(triples.map((t) => t.subject))];
+    const subjects = [...new Set(escapedTriples.map((t) => t.subject))];
     for (const r of subjects) {
-      const resourceTriples = triples.filter((t) => t.subject === r);
+      const resourceTriples = escapedTriples.filter((t) => t.subject === r);
       await query(`
     INSERT DATA{
-      GRAPH ${graph}{
+      GRAPH ${escapedGraph}{
         ${resourceTriples.map((t) => `${t.subject} ${t.predicate} ${t.object}.`).join("\n")}
       }
     };
     `);
-      await ensureUuidForResource(r, graph);
+      await ensureUuidForResource(r, escapedGraph);
       insertedTriples = insertedTriples.concat(resourceTriples);
     }
   } catch (e) {
     console.error("error while trying to persist data!", e.message);
     console.info("persisted triples", JSON.stringify(insertedTriples));
-    console.info("all triples", JSON.stringify(triples));
+    console.info("all triples", JSON.stringify(escapedTriples));
     throw e;
   }
 }
@@ -323,7 +323,9 @@ const filterPendingTimeout = function (timeout) {
 
     const modifiedDate = new Date(resource.created);
     const currentDate = new Date();
-    return (currentDate - modifiedDate) / (1000 * 60 * 60) >= parseInt(timeout, 10);
+    return (
+      (currentDate - modifiedDate) / (1000 * 60 * 60) >= parseInt(timeout, 10)
+    );
   };
 };
 
