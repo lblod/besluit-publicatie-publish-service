@@ -13,7 +13,7 @@ import {
   IS_PUBLISHED_NOTULEN,
   insertZittingPermalinkQuery,
 } from "./queries";
-import rdfaDomDocument from "./rdfa-dom-document";
+import RdfaDomDocument from "./rdfa-dom-document";
 
 /**
  * Main entry point for extraction of data.
@@ -24,7 +24,7 @@ import rdfaDomDocument from "./rdfa-dom-document";
  *  - We extend AP with agenda, uittreksel and besluiten lijst. This eases management of extracted data.
  * */
 async function startPipeline(resourceToPublish) {
-  const doc = new rdfaDomDocument(resourceToPublish.rdfaSnippet);
+  const doc = new RdfaDomDocument(resourceToPublish.rdfaSnippet);
   const contexts = analyse(doc.getTopDomNode());
   let triples = flatTriples(contexts.map((c) => c.context));
   triples = preProcess(triples);
