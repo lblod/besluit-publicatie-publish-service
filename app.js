@@ -14,7 +14,7 @@ import { startPipeline } from "./support/pipeline";
 
 const PENDING_TIMEOUT = process.env.PENDING_TIMEOUT_HOURS || 3;
 const CRON_FREQUENCY = process.env.CACHING_CRON_PATTERN || "0 */5 * * * *";
-const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10);
+const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS || 10, 10);
 const SEARCH_GRAPH =
   process.env.SEARCH_GRAPH || "http://mu.semte.ch/graphs/public";
 
@@ -38,7 +38,7 @@ async function startPublishing(origin = "http call") {
   for (const item of unprocessedResources) {
     console.log(`-- Locking resources: ${item.resource}`);
     await updateStatus(item, PENDING_STATUS, item.numberOfRetries);
-    item.numberOfRetries = parseInt(item.numberOfRetries || 0) + 1;
+    item.numberOfRetries = parseInt(item.numberOfRetries || 0, 10) + 1;
   }
 
   for (const item of unprocessedResources) {

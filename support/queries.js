@@ -323,7 +323,7 @@ const filterPendingTimeout = function (timeout) {
 
     const modifiedDate = new Date(resource.created);
     const currentDate = new Date();
-    return (currentDate - modifiedDate) / (1000 * 60 * 60) >= parseInt(timeout);
+    return (currentDate - modifiedDate) / (1000 * 60 * 60) >= parseInt(timeout, 10);
   };
 };
 
