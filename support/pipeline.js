@@ -3,6 +3,7 @@ import {
   findAllNodesOfType,
 } from "@lblod/marawa/dom-helpers";
 import { analyse, resolvePrefixes } from "@lblod/marawa/rdfa-context-scanner";
+// eslint-disable-next-line import/no-unresolved
 import { uuid } from "mu";
 import crypto from "crypto";
 import { JSDOM } from "jsdom";
