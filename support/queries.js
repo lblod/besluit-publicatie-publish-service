@@ -179,7 +179,7 @@ async function cleanUpResource(
       } WHERE {
           GRAPH ${sparqlEscapeUri(graph)}{
             ${sparqlEscapeUri(uri)} ?p ?o.
-            FILTER(?p NOT IN (${exceptionList.map((uri) => sparqlEscapeUri(uri)).join(", ")}))
+            FILTER(?p NOT IN (${exceptionList.map((exceptionUri) => sparqlEscapeUri(exceptionUri)).join(", ")}))
           }
       }
   `;
