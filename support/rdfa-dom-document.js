@@ -2,7 +2,6 @@
  * Represents an rdfa-document as entered by the user in the frontend.
  */
 
-import { query, sparqlEscapeString } from "mu";
 import jsdom from "jsdom";
 
 class RdfaDomDocument {

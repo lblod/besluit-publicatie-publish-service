@@ -9,7 +9,7 @@ import {
   sparqlEscapeBool,
   // eslint-disable-next-line import/no-unresolved
 } from "mu";
-import { querySudo as query, updateSudo as update } from "@lblod/mu-auth-sudo";
+import { querySudo as query } from "@lblod/mu-auth-sudo";
 import { readFile } from "fs/promises";
 
 const PENDING_STATUS =
