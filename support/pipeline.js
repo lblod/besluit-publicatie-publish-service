@@ -16,6 +16,15 @@ import {
 import RdfaDomDocument from "./rdfa-dom-document";
 import { persistContentToFile, writeFileMetadataToDb } from './file-utils';
 
+import {
+  isURI,
+  dedupeTriples,
+  findTripleWithObject,
+  expandURI,
+  RDF_TYPE,
+} from "./rdf-utils";
+
+/** @typedef {import('./rdf-utils').Triple} Triple */
 /**
  * Main entry point for extraction of data.
  * Assumes
@@ -46,6 +55,7 @@ async function startPipeline(resourceToPublish) {
  *  - Besluitenlijst is attached to zitting.
  *  - The behandeling van agendapunten are extracted and linked to the besluiten too.
  *  - bvaps are provided with order index
+ * @param {Triple[]} triples
  */
 async function insertBesluitenlijst(triples, resourceToPublish) {
   if (!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))) {
@@ -81,8 +91,8 @@ async function insertBesluitenlijst(triples, resourceToPublish) {
   // Postprocessing: make sure uri's are provided to reorder them
   const trs = triples.filter(
     (t) =>
-      t.predicate !== "http://data.vlaanderen.be/ns/besluit#gebeurtNa" ||
-      isURI(t.object),
+      expandURI(t.predicate) !==
+        "http://data.vlaanderen.be/ns/besluit#gebeurtNa" || isURI(t.object),
   );
 
   let bvaps = getBvap(trs);
@@ -139,7 +149,10 @@ async function insertUittreksel(triples, resourceToPublish, doc, contexts) {
     resourceToPublish.resource,
   );
   const besluitIRIs = triples
-    .filter((t) => t.object === "http://data.vlaanderen.be/ns/besluit#Besluit")
+    .filter(
+      (t) =>
+        expandURI(t.object) === "http://data.vlaanderen.be/ns/besluit#Besluit",
+    )
     .map((t) => t.subject);
   for (const besluitIRI of new Set(besluitIRIs)) {
     const besluitDOM = findNodeForResource(contexts, besluitIRI);
@@ -207,8 +220,8 @@ async function insertAgenda(triples, resourceToPublish) {
   // keep on preprocessing. We really need this predicate to point to a uri
   const trs = triples.filter(
     (t) =>
-      t.predicate !== "http://data.vlaanderen.be/ns/besluit#aangebrachtNa" ||
-      isURI(t.object),
+      expandURI(t.predicate) !==
+        "http://data.vlaanderen.be/ns/besluit#aangebrachtNa" || isURI(t.object),
   );
 
   let agendapunten = getAgendaPunten(trs);
@@ -270,8 +283,8 @@ async function insertZittingPermalink(triples) {
 
 function isAZitting(triple) {
   return (
-    triple.predicate === "a" &&
-    triple.object === "http://data.vlaanderen.be/ns/besluit#Zitting"
+    expandURI(triple.predicate) === RDF_TYPE &&
+    expandURI(triple.object) === "http://data.vlaanderen.be/ns/besluit#Zitting"
   );
 }
 
@@ -281,13 +294,6 @@ function getZittingUri(triples) {
   return zitting.subject;
 }
 
-/**
- * @param {[]} triples
- * @param {string} objectUri
- */
-function findTripleWithObject(triples, objectUri) {
-  return triples.find((t) => t.object === objectUri);
-}
 /*
  * Adds order to bvap and agendapunten (AP extension)
  */
@@ -300,17 +306,22 @@ function orderGebeurtNa(
   // assumes AP's are a list.
   // assumes no duplicates
   const orderInformation = [];
-  const childAps = triples.filter((t) => t.predicate === gebeurtNa);
+  const childAps = triples.filter((t) => expandURI(t.predicate) === gebeurtNa);
 
   if (childAps.length === 0) return triples;
 
   // TODO: this filtering seems a bit complex...
   const rootAps = triples
-    .filter((e) => e.predicate === "a" && e.object === type)
+    .filter(
+      (e) =>
+        expandURI(e.predicate) === RDF_TYPE && expandURI(e.object) === type,
+    )
     .map((t) => t.subject)
     .filter(
       (t) =>
-        !childAps.map((apTriple) => apTriple.subject).find((uri) => uri === t),
+        !childAps
+          .map((apTriple) => apTriple.subject)
+          .find((uri) => expandURI(uri) === expandURI(t)),
     );
 
   const ap1 = rootAps[0];
@@ -364,7 +375,7 @@ function orderGebeurtNa(
  */
 function linkToZitting(preparedTriples, origTriples, predicate) {
   const zitting = origTriples.find(isAZitting);
-  const resources = preparedTriples.filter((t) => t.predicate === "a");
+  const resources = preparedTriples.filter((t) => expandURI(t.predicate) === RDF_TYPE);
   resources.forEach((t) => {
     preparedTriples.push({
       subject: zitting.subject,
@@ -380,7 +391,7 @@ function linkToContainerResource(
   containerResource,
   predicate,
 ) {
-  const resources = preparedTriples.filter((t) => t.predicate === "a");
+  const resources = preparedTriples.filter((t) => expandURI(t.predicate) === RDF_TYPE);
   resources.forEach((t) => {
     preparedTriples.push({
       subject: containerResource,
@@ -396,7 +407,7 @@ function linkToContainerResource(
  */
 function linkToPublishedResource(preparedTriples, resourceUri) {
   const predicate = "http://www.w3.org/ns/prov#wasDerivedFrom";
-  const resources = preparedTriples.filter((t) => t.predicate === "a"); // extract the types
+  const resources = preparedTriples.filter((t) => expandURI(t.predicate) === RDF_TYPE); // extract the types
   resources.forEach((t) => {
     preparedTriples.push({
       subject: t.subject,
@@ -429,7 +440,7 @@ function preProcess(incomingTriples) {
   triples = triples.filter(
     (t) =>
       !(
-        t.datatype === "http://www.w3.org/2000/01/rdf-schema#Resource" &&
+        expandURI(t.datatype) === "http://www.w3.org/2000/01/rdf-schema#Resource" &&
         t.object.trim().length < 1
       ),
   );
@@ -462,13 +473,6 @@ function flatTriples(contexts) {
 }
 
 /*
- * checks if URI (stolen from SO)
- */
-function isURI(str) {
-  return /^https?:\/\/(.*)/.test(str);
-}
-
-/*
  * hash string
  */
 async function hashStr(message) {
@@ -478,12 +482,12 @@ async function hashStr(message) {
 function getBesluiten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Besluit",
+      expandURI(e.predicate) === RDF_TYPE &&
+        expandURI(e.object) === "http://data.vlaanderen.be/ns/besluit#Besluit",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.europa.eu/eli/ontology#description",
     "http://data.europa.eu/eli/ontology#title_short",
     "http://data.vlaanderen.be/ns/besluit#motivering",
@@ -502,8 +506,8 @@ function getBesluiten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+        poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
@@ -511,14 +515,14 @@ function getBesluiten(triples) {
 function getBvap(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object ===
+      expandURI(e.predicate) === RDF_TYPE &&
+        expandURI(e.object) ===
         "http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt",
   );
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#gebeurtNa",
     "http://www.w3.org/ns/prov#generated",
     "http://data.vlaanderen.be/ns/besluit#heeftAanwezige",
@@ -534,40 +538,40 @@ function getBvap(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+        poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
 function getStemmingen(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Stemming",
+      expandURI(e.predicate) === RDF_TYPE &&
+        expandURI(e.object) === "http://data.vlaanderen.be/ns/besluit#Stemming",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#onderwerp",
     "http://data.vlaanderen.be/ns/besluit#gevolg",
   ];
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+        poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
 function getAgendaPunten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Agendapunt",
+      expandURI(e.predicate) === RDF_TYPE &&
+      expandURI( e.object  )=== "http://data.vlaanderen.be/ns/besluit#Agendapunt",
   );
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#aangebrachtNa",
     "http://purl.org/dc/terms/description",
     "http://data.vlaanderen.be/ns/besluit#geplandOpenbaar",
@@ -582,15 +586,15 @@ function getAgendaPunten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate),)
   );
   return trs;
 }
 
 function enrichNotulen(triples, dom, contexts) {
   const besluitIRIs = triples
-    .filter((t) => t.object === "http://data.vlaanderen.be/ns/besluit#Besluit")
+    .filter((t) => expandURI(t.object) === "http://data.vlaanderen.be/ns/besluit#Besluit")
     .map((t) => t.subject);
   for (const besluitIRI of new Set(besluitIRIs)) {
     const besluitDOM = findNodeForResource(contexts, besluitIRI);
@@ -603,8 +607,8 @@ function enrichBesluit(dom, besluitIRI, triples) {
   const { document } = new JSDOM("").window;
   const behandeling = triples.find(
     (t) =>
-      t.object === besluitIRI &&
-      t.predicate === "http://www.w3.org/ns/prov#generated",
+      expandURI(t.object) === expandURI(besluitIRI) &&
+      expandURI(t.predicate) === "http://www.w3.org/ns/prov#generated",
   );
   if (behandeling) {
     const generatedLink = document.createElement("link");
@@ -613,12 +617,12 @@ function enrichBesluit(dom, besluitIRI, triples) {
     dom.append(generatedLink);
 
     const zittingTriple = triples.find(
-      (t) => t.object === "http://data.vlaanderen.be/ns/besluit#Zitting",
+      (t) => expandURI(t.object) === "http://data.vlaanderen.be/ns/besluit#Zitting",
     ); // TODO: assumes one zitting!
     const agendapuntTriple = triples.find(
       (t) =>
-        t.subject === behandeling.subject &&
-        t.predicate === "http://purl.org/dc/terms/subject",
+        expandURI(t.subject) === expandURI(behandeling.subject) &&
+        expandURI(t.predicate) === "http://purl.org/dc/terms/subject",
     );
     if (agendapuntTriple && zittingTriple) {
       const agendapuntToZitting = document.createElement("link");
@@ -641,7 +645,7 @@ function enrichBesluit(dom, besluitIRI, triples) {
   dom.append(pubDate);
   const gehoudenDoor = triples.find(
     (t) =>
-      t.predicate === "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor",
+      expandURI(t.predicate) === "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor",
   );
   if (gehoudenDoor) {
     const generatedLink = document.createElement("link");
@@ -659,7 +663,7 @@ function getZittingResource(triples) {
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#geplandeStart",
     "http://www.w3.org/ns/prov#startedAtTime",
     "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor",
@@ -676,8 +680,8 @@ function getZittingResource(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate),)
   );
   return trs;
 }
@@ -689,7 +693,7 @@ function findNodeForResource(orderedContexts, resource) {
     const ctxObj = orderedContexts[idx];
     for (let cdx = 0; cdx < ctxObj.context.length; cdx += 1) {
       const triple = ctxObj.context[cdx];
-      if (triple.subject === resource) return ctxObj.semanticNode.domNode;
+      if (expandURI(triple.subject) === expandURI(resource)) return ctxObj.semanticNode.domNode;
     }
   }
   console.log(`Could not find resource ${resource}`);
