@@ -5,10 +5,34 @@
 import jsdom from "jsdom";
 
 class RdfaDomDocument {
+  /**
+   * @private
+   * @type {string}
+   */
+  content;
+
+  /**
+   * @private
+   * @type {HTMLHtmlElement?}
+   */
+  dom;
+
+  /**
+   * @private
+   * @type {HTMLBodyElement?}
+   */
+  topDomNode;
+
+  /**
+   * @param {string} content
+   */
   constructor(content) {
     this.content = content;
   }
 
+  /**
+   * @returns {HTMLHtmlElement}
+   */
   getDom() {
     if (this.dom) {
       return this.dom;
@@ -19,6 +43,9 @@ class RdfaDomDocument {
     return dom;
   }
 
+  /**
+   * @returns {HTMLBodyElement}
+   */
   getTopDomNode() {
     if (this.topDomNode) {
       return this.topDomNode;
@@ -29,6 +56,9 @@ class RdfaDomDocument {
     return topDomNode;
   }
 
+  /**
+   * @returns {void}
+   */
   resetDom() {
     this.dom = undefined;
     this.topDomNode = undefined;

@@ -295,8 +295,13 @@ function applyEscapeFunctionData(triples) {
     .filter((e) => e);
 }
 
+/**
+ * Checks if a triple is a "<subject> a <type>" triple
+ * The iri's are already assumed to be sparql-escaped
+ * @param {import("./rdf-utils").Triple} triple The ALREADY SPARQL ESCAPED triple to check
+ */
 function isAResource(triple) {
-  return expandURI(triple.predicate) === RDF_TYPE;
+  return triple.predicate === `<${RDF_TYPE}>`;
 }
 
 /**

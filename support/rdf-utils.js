@@ -109,17 +109,23 @@ const DEFAULT_PREFIX_MAP = new Map([
 ]);
 export const RDF_TYPE = "http://www.w3.org/1999/02/22-rdf-syntax-ns#type";
 /**
- * @param {string} uri
+ * @param {string?} uri
  */
 export function expandURI(uri, prefixMap = DEFAULT_PREFIX_MAP) {
+  if (typeof uri !== "string") {
+    return uri;
+  }
   if (isURI(uri)) {
     return uri;
   }
   if (uri === "a") {
     return RDF_TYPE;
   }
+  if (/\s/.test(uri)) {
+    return uri;
+  }
   const split = uri.split(":");
-  if (split.length > 1) {
+  if (split.length === 2) {
     const prefix = split[0];
     const expansion = prefixMap.get(prefix);
     if (expansion) {
