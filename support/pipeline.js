@@ -23,6 +23,8 @@ import {
   RDF_TYPE,
 } from "./rdf-utils";
 
+const BASE_IRI =
+  process.env.BASE_IRI || "https://publicatie.gelinkt-notuleren.vlaanderen.be/";
 /** @typedef {import('./rdf-utils').Triple} Triple */
 /**
  * Main entry point for extraction of data.
@@ -52,7 +54,7 @@ async function startPipeline(resourceToPublish) {
 function parseRdfaIntoFlatTriples(html) {
   const triples = [];
   const parser = new RdfaParser({
-    baseIRI: "https://www.rubensworks.net/",
+    baseIRI: BASE_IRI,
     contentType: "text/html",
   });
   parser
