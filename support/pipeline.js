@@ -33,7 +33,6 @@ import {
  *  - We extend AP with agenda, uittreksel and besluiten lijst. This eases management of extracted data.
  * */
 async function startPipeline(resourceToPublish) {
-  console.profile('pipeline');
   const doc = new RdfaDomDocument(resourceToPublish.rdfaSnippet);
   const triples = preProcess(
     dedupeTriples(parseRdfaIntoFlatTriples(resourceToPublish.rdfaSnippet)),
@@ -45,7 +44,6 @@ async function startPipeline(resourceToPublish) {
   await insertNotulen(triples, resourceToPublish, doc);
 
   await insertZittingPermalink(triples);
-  console.profileEnd('pipeline');
 }
 /**
  * @param {string} html
