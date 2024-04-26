@@ -3,7 +3,7 @@ steps:
     image: plugins/docker
     settings:
       repo: lblod/besluit-publicatie-publish-service
-      tags: "$CI_COMMIT_SOURCE_BRANCH-$CI_COMMIT_SHA"
+      tags: "${CI_COMMIT_SOURCE_BRANCH}-${CI_COMMIT_SHA}"
       purge: true
     secrets: [ docker_username, docker_password ]
 when:
