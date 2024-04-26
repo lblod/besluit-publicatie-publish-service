@@ -1,8 +1,8 @@
 /* eslint-disable no-use-before-define */
-import { analyse } from "@lblod/marawa/rdfa-context-scanner";
 // eslint-disable-next-line import/no-unresolved
 import { uuid } from "mu";
 import crypto from "crypto";
+import { RdfaParser } from "rdfa-streaming-parser";
 import {
   persistExtractedData,
   belongsToType,
@@ -14,7 +14,6 @@ import {
 } from "./queries";
 import RdfaDomDocument from "./rdfa-dom-document";
 import { persistContentToFile, writeFileMetadataToDb } from "./file-utils";
-import { RdfaParser } from "rdfa-streaming-parser";
 import { annotateDecisions } from "./annotate-decisions";
 import {
   isURI,
@@ -498,13 +497,6 @@ function postProcess(triples) {
 }
 
 /*
- * flatten output from contextscanner
- */
-function flatTriples(contexts) {
-  return contexts.reduce((acc, e) => [...acc, ...e], []);
-}
-
-/*
  * hash string
  */
 async function hashStr(message) {
@@ -652,18 +644,4 @@ function getZittingResource(triples) {
   return trs;
 }
 
-/**
- * returns the first domNode where resource is the subject */
-function findNodeForResource(orderedContexts, resource) {
-  for (let idx = 0; idx < orderedContexts.length; idx += 1) {
-    const ctxObj = orderedContexts[idx];
-    for (let cdx = 0; cdx < ctxObj.context.length; cdx += 1) {
-      const triple = ctxObj.context[cdx];
-      if (expandURI(triple.subject) === expandURI(resource))
-        return ctxObj.semanticNode.domNode;
-    }
-  }
-  console.log(`Could not find resource ${resource}`);
-  return null;
-}
 export { startPipeline };

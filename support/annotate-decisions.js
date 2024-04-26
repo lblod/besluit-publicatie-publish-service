@@ -1,5 +1,5 @@
-import { expandURI } from "./rdf-utils";
 import { JSDOM } from "jsdom";
+import { expandURI } from "./rdf-utils";
 /** @typedef {import('./rdf-utils').Triple} Triple */
 /** @typedef {import('./rdfa-dom-document').default} RdfaDomDocument */
 
