@@ -4,11 +4,10 @@
   "description": "mu-semtech service to extract triples from PublishedResources and map to Publicatie Besluit",
   "main": "app.js",
   "dependencies": {
-    "@lblod/marawa": "0.8.0-beta.3",
     "@lblod/mu-auth-sudo": "^0.3.2",
     "cron": "^1.3.0",
-    "graph-rdfa-processor": "^1.3.0",
-    "jsdom": "^11.6.2"
+    "jsdom": "^11.6.2",
+    "rdfa-streaming-parser": "^2.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.2",

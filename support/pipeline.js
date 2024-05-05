@@ -1,9 +1,8 @@
 /* eslint-disable no-use-before-define */
-import { analyse } from "@lblod/marawa/rdfa-context-scanner";
 // eslint-disable-next-line import/no-unresolved
 import { uuid } from "mu";
 import crypto from "crypto";
-import { JSDOM } from "jsdom";
+import { RdfaParser } from "rdfa-streaming-parser";
 import {
   persistExtractedData,
   belongsToType,
@@ -14,7 +13,19 @@ import {
   insertZittingPermalinkQuery,
 } from "./queries";
 import RdfaDomDocument from "./rdfa-dom-document";
+import { persistContentToFile, writeFileMetadataToDb } from "./file-utils";
+import { annotateDecisions } from "./annotate-decisions";
+import {
+  isURI,
+  dedupeTriples,
+  findTripleWithObject,
+  expandURI,
+  RDF_TYPE,
+} from "./rdf-utils";
 
+const BASE_IRI =
+  process.env.BASE_IRI || "https://publicatie.gelinkt-notuleren.vlaanderen.be/";
+/** @typedef {import('./rdf-utils').Triple} Triple */
 /**
  * Main entry point for extraction of data.
  * Assumes
@@ -25,19 +36,42 @@ import RdfaDomDocument from "./rdfa-dom-document";
  * */
 async function startPipeline(resourceToPublish) {
   const doc = new RdfaDomDocument(resourceToPublish.rdfaSnippet);
-  const contexts = analyse(doc.getTopDomNode());
-  let triples = flatTriples(contexts.map((c) => c.context));
-  triples = preProcess(triples);
-
+  const triples = preProcess(
+    dedupeTriples(parseRdfaIntoFlatTriples(resourceToPublish.rdfaSnippet)),
+  );
   await insertZitting(triples, resourceToPublish);
   await insertAgenda(triples, resourceToPublish);
-  await insertUittreksel(triples, resourceToPublish, doc, contexts);
+  await insertUittreksel(triples, resourceToPublish, doc);
   await insertBesluitenlijst(triples, resourceToPublish);
-  await insertNotulen(triples, resourceToPublish, doc, contexts);
+  await insertNotulen(triples, resourceToPublish, doc);
 
   await insertZittingPermalink(triples);
 }
-
+/**
+ * @param {string} html
+ * @returns {Triple[]}
+ */
+function parseRdfaIntoFlatTriples(html) {
+  const triples = [];
+  const parser = new RdfaParser({
+    baseIRI: BASE_IRI,
+    contentType: "text/html",
+  });
+  parser
+    .on("data", (triple) =>
+      triples.push({
+        subject: triple.subject.value,
+        predicate: triple.predicate.value,
+        object: triple.object.value,
+        datatype: triple.object.datatype?.value,
+      }),
+    )
+    .on("error", console.error)
+    .on("end", () => console.log("All triples were parsed!"));
+  parser.write(html);
+  parser.end();
+  return triples;
+}
 /**
  * Extracts besluitenlijst from triples and saves them.
  *
@@ -45,6 +79,7 @@ async function startPipeline(resourceToPublish) {
  *  - Besluitenlijst is attached to zitting.
  *  - The behandeling van agendapunten are extracted and linked to the besluiten too.
  *  - bvaps are provided with order index
+ * @param {Triple[]} triples
  */
 async function insertBesluitenlijst(triples, resourceToPublish) {
   if (!(await belongsToType(resourceToPublish, IS_PUBLISHED_BESLUITENLIJST))) {
@@ -80,8 +115,8 @@ async function insertBesluitenlijst(triples, resourceToPublish) {
   // Postprocessing: make sure uri's are provided to reorder them
   const trs = triples.filter(
     (t) =>
-      t.predicate !== "http://data.vlaanderen.be/ns/besluit#gebeurtNa" ||
-      isURI(t.object),
+      expandURI(t.predicate) !==
+        "http://data.vlaanderen.be/ns/besluit#gebeurtNa" || isURI(t.object),
   );
 
   let bvaps = getBvap(trs);
@@ -118,7 +153,7 @@ async function insertBesluitenlijst(triples, resourceToPublish) {
  *  - Uittreksel is attached to zitting.
  *  - The besluiten are extracted and linked to the besluiten too.
  */
-async function insertUittreksel(triples, resourceToPublish, doc, contexts) {
+async function insertUittreksel(triples, resourceToPublish, doc) {
   if (!(await belongsToType(resourceToPublish, IS_PUBLISHED_BEHANDELING))) {
     return;
   }
@@ -137,13 +172,7 @@ async function insertUittreksel(triples, resourceToPublish, doc, contexts) {
     uittrekselTrps,
     resourceToPublish.resource,
   );
-  const besluitIRIs = triples
-    .filter((t) => t.object === "http://data.vlaanderen.be/ns/besluit#Besluit")
-    .map((t) => t.subject);
-  for (const besluitIRI of new Set(besluitIRIs)) {
-    const besluitDOM = findNodeForResource(contexts, besluitIRI);
-    enrichBesluit(besluitDOM, besluitIRI, triples);
-  }
+  annotateDecisions(doc, triples);
   const newSnippet = doc.getTopDomNode().innerHTML;
   uittrekselTrps.push({
     subject: uittreksel.subject,
@@ -206,8 +235,8 @@ async function insertAgenda(triples, resourceToPublish) {
   // keep on preprocessing. We really need this predicate to point to a uri
   const trs = triples.filter(
     (t) =>
-      t.predicate !== "http://data.vlaanderen.be/ns/besluit#aangebrachtNa" ||
-      isURI(t.object),
+      expandURI(t.predicate) !==
+        "http://data.vlaanderen.be/ns/besluit#aangebrachtNa" || isURI(t.object),
   );
 
   let agendapunten = getAgendaPunten(trs);
@@ -227,7 +256,7 @@ async function insertAgenda(triples, resourceToPublish) {
   await persistExtractedData([...agendaTrps, ...agendapunten]);
 }
 
-async function insertNotulen(triples, resourceToPublish, doc, contexts) {
+async function insertNotulen(triples, resourceToPublish, doc) {
   if (!(await belongsToType(resourceToPublish, IS_PUBLISHED_NOTULEN))) {
     return;
   }
@@ -241,10 +270,19 @@ async function insertNotulen(triples, resourceToPublish, doc, contexts) {
     predicate: "a",
     object: "http://mu.semte.ch/vocabularies/ext/Notulen",
   });
+
+  annotateDecisions(doc, triples);
+  const fileMetadata = await persistContentToFile(
+    doc.getTopDomNode().innerHTML,
+    ["enriched-notulen"],
+  );
+  const logicalFileUri = await writeFileMetadataToDb(fileMetadata);
+  // using the prov:generated predicate here to mirror how we link file data to
+  // PublishedResource objects coming from GN
   trs.push({
     subject,
-    predicate: "http://www.w3.org/ns/prov#value",
-    object: enrichNotulen(triples, doc, contexts),
+    predicate: "http://www.w3.org/ns/prov#generated",
+    object: logicalFileUri,
   });
   linkToZitting(
     trs,
@@ -269,8 +307,8 @@ async function insertZittingPermalink(triples) {
 
 function isAZitting(triple) {
   return (
-    triple.predicate === "a" &&
-    triple.object === "http://data.vlaanderen.be/ns/besluit#Zitting"
+    expandURI(triple.predicate) === RDF_TYPE &&
+    expandURI(triple.object) === "http://data.vlaanderen.be/ns/besluit#Zitting"
   );
 }
 
@@ -280,13 +318,6 @@ function getZittingUri(triples) {
   return zitting.subject;
 }
 
-/**
- * @param {[]} triples
- * @param {string} objectUri
- */
-function findTripleWithObject(triples, objectUri) {
-  return triples.find((t) => t.object === objectUri);
-}
 /*
  * Adds order to bvap and agendapunten (AP extension)
  */
@@ -299,17 +330,22 @@ function orderGebeurtNa(
   // assumes AP's are a list.
   // assumes no duplicates
   const orderInformation = [];
-  const childAps = triples.filter((t) => t.predicate === gebeurtNa);
+  const childAps = triples.filter((t) => expandURI(t.predicate) === gebeurtNa);
 
   if (childAps.length === 0) return triples;
 
   // TODO: this filtering seems a bit complex...
   const rootAps = triples
-    .filter((e) => e.predicate === "a" && e.object === type)
+    .filter(
+      (e) =>
+        expandURI(e.predicate) === RDF_TYPE && expandURI(e.object) === type,
+    )
     .map((t) => t.subject)
     .filter(
       (t) =>
-        !childAps.map((apTriple) => apTriple.subject).find((uri) => uri === t),
+        !childAps
+          .map((apTriple) => apTriple.subject)
+          .find((uri) => expandURI(uri) === expandURI(t)),
     );
 
   const ap1 = rootAps[0];
@@ -363,7 +399,9 @@ function orderGebeurtNa(
  */
 function linkToZitting(preparedTriples, origTriples, predicate) {
   const zitting = origTriples.find(isAZitting);
-  const resources = preparedTriples.filter((t) => t.predicate === "a");
+  const resources = preparedTriples.filter(
+    (t) => expandURI(t.predicate) === RDF_TYPE,
+  );
   resources.forEach((t) => {
     preparedTriples.push({
       subject: zitting.subject,
@@ -379,7 +417,9 @@ function linkToContainerResource(
   containerResource,
   predicate,
 ) {
-  const resources = preparedTriples.filter((t) => t.predicate === "a");
+  const resources = preparedTriples.filter(
+    (t) => expandURI(t.predicate) === RDF_TYPE,
+  );
   resources.forEach((t) => {
     preparedTriples.push({
       subject: containerResource,
@@ -395,7 +435,9 @@ function linkToContainerResource(
  */
 function linkToPublishedResource(preparedTriples, resourceUri) {
   const predicate = "http://www.w3.org/ns/prov#wasDerivedFrom";
-  const resources = preparedTriples.filter((t) => t.predicate === "a"); // extract the types
+  const resources = preparedTriples.filter(
+    (t) => expandURI(t.predicate) === RDF_TYPE,
+  ); // extract the types
   resources.forEach((t) => {
     preparedTriples.push({
       subject: t.subject,
@@ -428,7 +470,8 @@ function preProcess(incomingTriples) {
   triples = triples.filter(
     (t) =>
       !(
-        t.datatype === "http://www.w3.org/2000/01/rdf-schema#Resource" &&
+        expandURI(t.datatype) ===
+          "http://www.w3.org/2000/01/rdf-schema#Resource" &&
         t.object.trim().length < 1
       ),
   );
@@ -454,20 +497,6 @@ function postProcess(triples) {
 }
 
 /*
- * flatten output from contextscanner
- */
-function flatTriples(contexts) {
-  return contexts.reduce((acc, e) => [...acc, ...e], []);
-}
-
-/*
- * checks if URI (stolen from SO)
- */
-function isURI(str) {
-  return /^https?:\/\/(.*)/.test(str);
-}
-
-/*
  * hash string
  */
 async function hashStr(message) {
@@ -477,12 +506,12 @@ async function hashStr(message) {
 function getBesluiten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Besluit",
+      expandURI(e.predicate) === RDF_TYPE &&
+      expandURI(e.object) === "http://data.vlaanderen.be/ns/besluit#Besluit",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.europa.eu/eli/ontology#description",
     "http://data.europa.eu/eli/ontology#title_short",
     "http://data.vlaanderen.be/ns/besluit#motivering",
@@ -501,8 +530,8 @@ function getBesluiten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
@@ -510,14 +539,14 @@ function getBesluiten(triples) {
 function getBvap(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object ===
+      expandURI(e.predicate) === RDF_TYPE &&
+      expandURI(e.object) ===
         "http://data.vlaanderen.be/ns/besluit#BehandelingVanAgendapunt",
   );
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#gebeurtNa",
     "http://www.w3.org/ns/prov#generated",
     "http://data.vlaanderen.be/ns/besluit#heeftAanwezige",
@@ -533,40 +562,40 @@ function getBvap(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
 function getStemmingen(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Stemming",
+      expandURI(e.predicate) === RDF_TYPE &&
+      expandURI(e.object) === "http://data.vlaanderen.be/ns/besluit#Stemming",
   );
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#onderwerp",
     "http://data.vlaanderen.be/ns/besluit#gevolg",
   ];
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
 function getAgendaPunten(triples) {
   let trs = triples.filter(
     (e) =>
-      e.predicate === "a" &&
-      e.object === "http://data.vlaanderen.be/ns/besluit#Agendapunt",
+      expandURI(e.predicate) === RDF_TYPE &&
+      expandURI(e.object) === "http://data.vlaanderen.be/ns/besluit#Agendapunt",
   );
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#aangebrachtNa",
     "http://purl.org/dc/terms/description",
     "http://data.vlaanderen.be/ns/besluit#geplandOpenbaar",
@@ -581,76 +610,10 @@ function getAgendaPunten(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
-}
-
-function enrichNotulen(triples, dom, contexts) {
-  const besluitIRIs = triples
-    .filter((t) => t.object === "http://data.vlaanderen.be/ns/besluit#Besluit")
-    .map((t) => t.subject);
-  for (const besluitIRI of new Set(besluitIRIs)) {
-    const besluitDOM = findNodeForResource(contexts, besluitIRI);
-    enrichBesluit(besluitDOM, besluitIRI, triples);
-  }
-  return contexts[0].semanticNode.domNode.outerHTML;
-}
-
-function enrichBesluit(dom, besluitIRI, triples) {
-  const { document } = new JSDOM("").window;
-  const behandeling = triples.find(
-    (t) =>
-      t.object === besluitIRI &&
-      t.predicate === "http://www.w3.org/ns/prov#generated",
-  );
-  if (behandeling) {
-    const generatedLink = document.createElement("link");
-    generatedLink.setAttribute("property", "prov:wasGeneratedBy");
-    generatedLink.setAttribute("resource", behandeling.subject);
-    dom.append(generatedLink);
-
-    const zittingTriple = triples.find(
-      (t) => t.object === "http://data.vlaanderen.be/ns/besluit#Zitting",
-    ); // TODO: assumes one zitting!
-    const agendapuntTriple = triples.find(
-      (t) =>
-        t.subject === behandeling.subject &&
-        t.predicate === "http://purl.org/dc/terms/subject",
-    );
-    if (agendapuntTriple && zittingTriple) {
-      const agendapuntToZitting = document.createElement("link");
-      agendapuntToZitting.setAttribute("about", zittingTriple.subject);
-      agendapuntToZitting.setAttribute(
-        "property",
-        "http://data.vlaanderen.be/ns/besluit#behandelt",
-      );
-      agendapuntToZitting.setAttribute("resource", agendapuntTriple.object);
-      dom.append(agendapuntToZitting);
-    }
-  }
-  const pubDate = document.createElement("link");
-  pubDate.setAttribute(
-    "property",
-    "http://data.europa.eu/eli/ontology#date_publication",
-  );
-  pubDate.setAttribute("datatype", "xsd:date");
-  pubDate.setAttribute("content", new Date().toISOString().substring(0, 10));
-  dom.append(pubDate);
-  const gehoudenDoor = triples.find(
-    (t) =>
-      t.predicate === "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor",
-  );
-  if (gehoudenDoor) {
-    const generatedLink = document.createElement("link");
-    generatedLink.setAttribute(
-      "property",
-      "http://data.europa.eu/eli/ontology#passed_by",
-    );
-    generatedLink.setAttribute("resource", gehoudenDoor.object);
-    dom.append(generatedLink);
-  }
 }
 
 function getZittingResource(triples) {
@@ -658,7 +621,7 @@ function getZittingResource(triples) {
 
   // We are conservative in what to persist; we respect applicatieprofiel
   const poi = [
-    "a",
+    RDF_TYPE,
     "http://data.vlaanderen.be/ns/besluit#geplandeStart",
     "http://www.w3.org/ns/prov#startedAtTime",
     "http://data.vlaanderen.be/ns/besluit#isGehoudenDoor",
@@ -675,23 +638,10 @@ function getZittingResource(triples) {
 
   trs = triples.filter(
     (t) =>
-      trs.find((a) => a.subject === t.subject) &&
-      poi.find((p) => p === t.predicate),
+      trs.find((a) => expandURI(a.subject) === expandURI(t.subject)) &&
+      poi.find((p) => p === expandURI(t.predicate)),
   );
   return trs;
 }
 
-/**
- * returns the first domNode where resource is the subject */
-function findNodeForResource(orderedContexts, resource) {
-  for (let idx = 0; idx < orderedContexts.length; idx += 1) {
-    const ctxObj = orderedContexts[idx];
-    for (let cdx = 0; cdx < ctxObj.context.length; cdx += 1) {
-      const triple = ctxObj.context[cdx];
-      if (triple.subject === resource) return ctxObj.semanticNode.domNode;
-    }
-  }
-  console.log(`Could not find resource ${resource}`);
-  return null;
-}
 export { startPipeline };

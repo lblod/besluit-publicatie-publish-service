@@ -11,6 +11,7 @@ import {
 } from "mu";
 import { querySudo as query } from "@lblod/mu-auth-sudo";
 import { readFile } from "fs/promises";
+import { expandURI, RDF_TYPE } from "./rdf-utils";
 
 const PENDING_STATUS =
   "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending";
@@ -275,7 +276,9 @@ function applyEscapeFunctionData(triples) {
     .map((t) => {
       const p = predicateDataTypeEscapeMap(t.predicate);
       const escapedPredicate =
-        p.predicate === "a" ? "a" : sparqlEscapeUri(t.predicate);
+        expandURI(p.predicate) === RDF_TYPE
+          ? sparqlEscapeUri(RDF_TYPE)
+          : sparqlEscapeUri(t.predicate);
       try {
         return {
           subject: p.escapeSubjectF(t.subject),
@@ -292,8 +295,13 @@ function applyEscapeFunctionData(triples) {
     .filter((e) => e);
 }
 
+/**
+ * Checks if a triple is a "<subject> a <type>" triple
+ * The iri's are already assumed to be sparql-escaped
+ * @param {import("./rdf-utils").Triple} triple The ALREADY SPARQL ESCAPED triple to check
+ */
 function isAResource(triple) {
-  return triple.predicate === "a";
+  return triple.predicate === `<${RDF_TYPE}>`;
 }
 
 /**
@@ -315,11 +323,7 @@ const parseResult = function (result) {
 
 const filterPendingTimeout = function (timeout) {
   return (resource) => {
-    if (
-      resource.status !==
-      "http://mu.semte.ch/vocabularies/ext/besluit-publicatie-publish-service/status/pending"
-    )
-      return true;
+    if (expandURI(resource.status) !== PENDING_STATUS) return true;
 
     const modifiedDate = new Date(resource.created);
     const currentDate = new Date();
@@ -334,6 +338,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     {
       escapeSubjectF: sparqlEscapeUri,
       predicate: "a",
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
       escapeObjectF: sparqlEscapeUri,
     },
     {
@@ -417,6 +426,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     },
     {
       escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
       predicate: "http://data.vlaanderen.be/ns/besluit#gebeurtNa",
       escapeObjectF: sparqlEscapeUri,
     },
@@ -480,6 +494,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     },
     {
       escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
       predicate: "http://data.vlaanderen.be/ns/besluit#onderwerp",
       escapeObjectF: sparqlEscapeString,
     },
@@ -493,6 +512,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     {
       escapeSubjectF: sparqlEscapeUri,
       predicate: "a",
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
       escapeObjectF: sparqlEscapeUri,
     },
     {
@@ -551,6 +575,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     {
       escapeSubjectF: sparqlEscapeUri,
       predicate: "a",
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
       escapeObjectF: sparqlEscapeUri,
     },
     {
@@ -638,6 +667,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     },
     {
       escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
       predicate: "http://www.w3.org/ns/prov#value",
       escapeObjectF: sparqlEscapeString,
     },
@@ -657,6 +691,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     {
       escapeSubjectF: sparqlEscapeUri,
       predicate: "a",
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
       escapeObjectF: sparqlEscapeUri,
     },
     {
@@ -684,6 +723,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     },
     {
       escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
       predicate: "http://mu.semte.ch/vocabularies/ext/uittrekselBvap",
       escapeObjectF: sparqlEscapeUri,
     },
@@ -698,6 +742,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
     {
       escapeSubjectF: sparqlEscapeUri,
       predicate: "a",
+      escapeObjectF: sparqlEscapeUri,
+    },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: RDF_TYPE,
       escapeObjectF: sparqlEscapeUri,
     },
     {
