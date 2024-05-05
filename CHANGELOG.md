@@ -1,5 +1,19 @@
 
 
+
+## 0.13.0 (2024-05-05)
+
+#### :rocket: Enhancement
+* [#13](https://github.com/lblod/besluit-publicatie-publish-service/pull/13) Improve parsing performance and save the processed html as a file ([@abeforgit](https://github.com/abeforgit))
+* [#14](https://github.com/lblod/besluit-publicatie-publish-service/pull/14) Add standard formatting and linting setup ([@abeforgit](https://github.com/abeforgit))
+
+#### :bug: Bug Fix
+* [#13](https://github.com/lblod/besluit-publicatie-publish-service/pull/13) Improve parsing performance and save the processed html as a file ([@abeforgit](https://github.com/abeforgit))
+
+#### Committers: 1
+- Arne Bertrand ([@abeforgit](https://github.com/abeforgit))
+
+
 ## 0.12.2 (2024-03-22)
 revert template bump and fix query again
 
