@@ -49,7 +49,6 @@ export async function persistContentToFile(content, pathPrefix = []) {
 }
 
 export async function writeFileMetadataToDb(metadata) {
-  console.log(metadata);
   const logicalFileUuid = uuid();
   const logicalFileUri = `http://lblod.data.gift/files/${logicalFileUuid}`;
   const logicalFileName = metadata.filename;
