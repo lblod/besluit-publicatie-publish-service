@@ -6,12 +6,27 @@ import { expandURI } from "./rdf-utils";
 
 function enrichBesluit(dom, besluitIRI, triples) {
   const { document } = new JSDOM("").window;
-  const behandeling = triples.find(
+  // There should be one, but in case the document is in a weird state
+  const behandelingen = triples.filter(
     (t) =>
       expandURI(t.object) === expandURI(besluitIRI) &&
       expandURI(t.predicate) === "http://www.w3.org/ns/prov#generated",
   );
-  if (behandeling) {
+  let agendapuntTriple;
+  let behandeling
+  for (const bh of behandelingen) {
+    // Find the first one which is linked to an AP
+    agendapuntTriple = triples.find(
+      (t) =>
+        expandURI(t.subject) === expandURI(bh.subject) &&
+        expandURI(t.predicate) === "http://purl.org/dc/terms/subject",
+    );
+    if (agendapuntTriple) {
+      behandeling = bh;
+      break;
+    }
+  }
+  if (behandeling && agendapuntTriple) {
     const generatedLink = document.createElement("link");
     generatedLink.setAttribute("property", "prov:wasGeneratedBy");
     generatedLink.setAttribute("resource", behandeling.subject);
@@ -21,12 +36,7 @@ function enrichBesluit(dom, besluitIRI, triples) {
       (t) =>
         expandURI(t.object) === "http://data.vlaanderen.be/ns/besluit#Zitting",
     ); // TODO: assumes one zitting!
-    const agendapuntTriple = triples.find(
-      (t) =>
-        expandURI(t.subject) === expandURI(behandeling.subject) &&
-        expandURI(t.predicate) === "http://purl.org/dc/terms/subject",
-    );
-    if (agendapuntTriple && zittingTriple) {
+    if (zittingTriple) {
       const agendapuntToZitting = document.createElement("link");
       agendapuntToZitting.setAttribute("about", zittingTriple.subject);
       agendapuntToZitting.setAttribute(
@@ -73,7 +83,10 @@ export function annotateDecisions(doc, triples) {
   // this is a rough selection which won't work in all cases, but I hope
   // to eliminate this whole fudzing around by skipping most of the parsing this
   // service does
-  const decisionNodes = dom.querySelectorAll(`[typeof~="${decisionType}"]`);
+  const decisionNodes = dom.querySelectorAll(
+    // typeof is for pre-rdfa-aware documents, the chain is to catch those
+    `[typeof~="${decisionType}"], [about] > [data-rdfa-container=true] > [resource~="${decisionType}"]`
+  );
   for (const node of decisionNodes) {
     const decisionIRI =
       node.getAttribute("about") ?? node.getAttribute("resource");
