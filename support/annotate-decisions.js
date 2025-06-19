@@ -73,7 +73,10 @@ export function annotateDecisions(doc, triples) {
   // this is a rough selection which won't work in all cases, but I hope
   // to eliminate this whole fudzing around by skipping most of the parsing this
   // service does
-  const decisionNodes = dom.querySelectorAll(`[typeof~="${decisionType}"]`);
+  const decisionNodes = dom.querySelectorAll(
+    // typeof is for pre-rdfa-aware documents, the chain is to catch those
+    `[typeof~="${decisionType}"], [about] > [data-rdfa-container=true] > [resource~="${decisionType}"]`
+  );
   for (const node of decisionNodes) {
     const decisionIRI =
       node.getAttribute("about") ?? node.getAttribute("resource");
