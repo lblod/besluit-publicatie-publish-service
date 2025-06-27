@@ -2,6 +2,8 @@
 
 
 ## 0.13.1 (2025-06-27)
+#### :rocket: Enhancement
+* [#15](https://github.com/lblod/besluit-publicatie-publish-service/pull/15) Find decision nodes in rdfa-aware documents ([@piemonkey](https://github.com/piemonkey))
 
 ## 0.13.0 (2024-05-05)
 
