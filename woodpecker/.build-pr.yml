@@ -1,0 +1,9 @@
+steps:
+  build-pr:
+    image: plugins/docker
+    settings:
+      repo: "${CI_REPO_OWNER}/${CI_REPO_NAME}"
+      dry_run: true
+when:
+  event:
+    - pull_request
