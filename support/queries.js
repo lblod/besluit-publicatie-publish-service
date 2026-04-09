@@ -416,6 +416,11 @@ const predicateDataTypeEscapeMap = function (predicate) {
       predicate: "http://data.europa.eu/eli/ontology#related_to",
       escapeObjectF: sparqlEscapeUri,
     },
+    {
+      escapeSubjectF: sparqlEscapeUri,
+      predicate: "http://mu.semte.ch/vocabularies/ext/linkedDecision",
+      escapeObjectF: sparqlEscapeUri,
+    },
   ];
 
   const bvap = [
