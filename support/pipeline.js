@@ -526,7 +526,7 @@ function getBesluiten(triples) {
     "http://www.w3.org/ns/prov#wasDerivedFrom",
     "http://mu.semte.ch/vocabularies/ext/besluitPublicatieLinkedBesluit",
     "http://data.europa.eu/eli/ontology#related_to",
-    "http://mu.semte.ch/vocabularies/ext/linkedDecision",
+    "http://data.europa.eu/eli/ontology#consolidates",
   ];
 
   trs = triples.filter(

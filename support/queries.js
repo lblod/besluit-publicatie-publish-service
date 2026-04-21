@@ -418,7 +418,7 @@ const predicateDataTypeEscapeMap = function (predicate) {
     },
     {
       escapeSubjectF: sparqlEscapeUri,
-      predicate: "http://mu.semte.ch/vocabularies/ext/linkedDecision",
+      predicate: "http://data.europa.eu/eli/ontology#consolidates",
       escapeObjectF: sparqlEscapeUri,
     },
   ];
