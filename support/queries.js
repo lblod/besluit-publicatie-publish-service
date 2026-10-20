@@ -150,12 +150,13 @@ async function persistExtractedData(
     const subjects = [...new Set(escapedTriples.map((t) => t.subject))];
     for (const r of subjects) {
       const resourceTriples = escapedTriples.filter((t) => t.subject === r);
-      await query(`
+      await update(`
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> 
     INSERT DATA{
       GRAPH ${escapedGraph}{
         ${resourceTriples.map((t) => `${t.subject} ${t.predicate} ${t.object}.`).join("\n")}
       }
-    };
+    }
     `);
       await ensureUuidForResource(r, escapedGraph);
       insertedTriples = insertedTriples.concat(resourceTriples);
