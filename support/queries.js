@@ -10,6 +10,7 @@ import {
   // eslint-disable-next-line import/no-unresolved
 } from "mu";
 import { querySudo as query } from "@lblod/mu-auth-sudo";
+import { updateSudo as update } from "@lblod/mu-auth-sudo";
 import { readFile } from "fs/promises";
 import { expandURI, RDF_TYPE } from "./rdf-utils";
 
@@ -124,7 +125,7 @@ async function updateStatus(resource, status, attempts = 1) {
      }
   `;
 
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function persistExtractedData(
@@ -184,7 +185,7 @@ async function cleanUpResource(
           }
       }
   `;
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function getRelationDataForZitting(
@@ -237,7 +238,7 @@ async function insertZittingPermalinkQuery(
 
   `;
 
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function ensureUuidForResource(escapedUri, escapedGraph) {
@@ -263,7 +264,7 @@ async function ensureUuidForResource(escapedUri, escapedGraph) {
        }
   `;
 
-  await query(insertStr);
+  await update(insertStr);
 
   return exUuid;
 }
