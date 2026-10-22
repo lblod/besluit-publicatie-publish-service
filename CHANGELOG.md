@@ -1,3 +1,9 @@
+## 0.14.1 (2026-10-22)
+
+#### :bug: Bug Fix
+
+- [#18](https://github.com/lblod/besluit-publicatie-publish-service/pull/18) Fix zitting sync not working ([@kobemertens](https://github.com/kobemertens))
+
 ## 0.14.0 (2026-04-17)
 
 #### :rocket: Enhancement
