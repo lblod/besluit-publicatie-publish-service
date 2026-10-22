@@ -10,6 +10,7 @@ import {
   // eslint-disable-next-line import/no-unresolved
 } from "mu";
 import { querySudo as query } from "@lblod/mu-auth-sudo";
+import { updateSudo as update } from "@lblod/mu-auth-sudo";
 import { readFile } from "fs/promises";
 import { expandURI, RDF_TYPE } from "./rdf-utils";
 
@@ -124,7 +125,7 @@ async function updateStatus(resource, status, attempts = 1) {
      }
   `;
 
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function persistExtractedData(
@@ -149,12 +150,13 @@ async function persistExtractedData(
     const subjects = [...new Set(escapedTriples.map((t) => t.subject))];
     for (const r of subjects) {
       const resourceTriples = escapedTriples.filter((t) => t.subject === r);
-      await query(`
+      await update(`
+    PREFIX xsd: <http://www.w3.org/2001/XMLSchema#> 
     INSERT DATA{
       GRAPH ${escapedGraph}{
         ${resourceTriples.map((t) => `${t.subject} ${t.predicate} ${t.object}.`).join("\n")}
       }
-    };
+    }
     `);
       await ensureUuidForResource(r, escapedGraph);
       insertedTriples = insertedTriples.concat(resourceTriples);
@@ -184,7 +186,7 @@ async function cleanUpResource(
           }
       }
   `;
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function getRelationDataForZitting(
@@ -237,7 +239,7 @@ async function insertZittingPermalinkQuery(
 
   `;
 
-  await query(queryStr);
+  await update(queryStr);
 }
 
 async function ensureUuidForResource(escapedUri, escapedGraph) {
@@ -263,7 +265,7 @@ async function ensureUuidForResource(escapedUri, escapedGraph) {
        }
   `;
 
-  await query(insertStr);
+  await update(insertStr);
 
   return exUuid;
 }
